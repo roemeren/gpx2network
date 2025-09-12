@@ -23,9 +23,11 @@ def ensure_data():
         >>> with open(pickle_paths["gdf_point_projected.geojson"], "rb") as f:
         ...     point_geodf = pickle.load(f)
     """
-    # create directly if it doesn't exist yet
+    # Create directly if it doesn't exist yet
     download_dir = os.path.join("data", "intermediate")
     os.makedirs(download_dir, exist_ok=True)
+
+    print("Checking required data files...")
 
     pickle_paths = {}
 
@@ -33,21 +35,18 @@ def ensure_data():
         geojson_path = os.path.join(download_dir, fname)
         pickle_path = geojson_path.replace(".geojson", ".pkl")
 
-        # Step 1: Download GeoJSON if missing
+        # Download GeoJSON if missing
         if not os.path.exists(geojson_path):
+            print(f"Downloading missing file: {fname}...")
             url = f"https://drive.google.com/uc?id={fid}"
             gdown.download(url, geojson_path, quiet=False)
-        else:
-            print(f"Download of {fname} already exists.")
 
-        # Step 2: Build pickle cache if missing
+        # Create pickle cache if missing
         if not os.path.exists(pickle_path):
             print(f"Creating pickle cache for {fname}...")
             gdf = gpd.read_file(geojson_path)
             with open(pickle_path, "wb") as f:
                 pickle.dump(gdf, f)
-        else:
-            print(f"Pickle cache for {fname} already exists.")
 
         pickle_paths[fname] = pickle_path
 

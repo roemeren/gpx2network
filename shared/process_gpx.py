@@ -1,7 +1,27 @@
 from shared.common import *
 
-# Function to extract segments and nodes from a GPX file
 def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
+    """
+    Extracts and matches GPX track segments and nodes with a bike network.
+
+    This function reads a GPX file, converts its tracks into geometries, 
+    buffers them, and intersects with a given bike network to identify 
+    matching segments. It also filters bike nodes corresponding to 
+    matched segments.
+
+    Args:
+        gpx_file_path (str): Path to the GPX file.
+        bike_network (GeoDataFrame): GeoDataFrame of bike network segments.
+        point_geodf (GeoDataFrame): GeoDataFrame of bike nodes.
+        debug (bool, optional): If True, saves intermediate GeoJSON files. Defaults to False.
+
+    Returns:
+        tuple:
+            GeoDataFrame: Filtered bike network segments matched with the GPX track, 
+                          including 'gpx_name' and 'gpx_date'.
+            GeoDataFrame: Matched bike nodes corresponding to the segments, 
+                          including 'gpx_name' and 'gpx_date'.
+    """
     # Step 1: Read and parse GPX file (specify encoding to avoid errors)
     with open(gpx_file_path, 'r', encoding='utf-8-sig') as gpx_file:
         gpx = gpxpy.parse(gpx_file)
@@ -67,6 +87,11 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
     filtered_segments = bike_segments_matched[bike_segments_matched['overlap_percentage'] 
                                               >= intersect_threshold]
 
+    # Exit the function if there are no segments with sufficient overlap
+    if filtered_segments.empty:
+        print(f"\tWarning: no segments found for this file with sufficient overlap.")
+        return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
+
     # Step 4: Extract unique nodes from the matched segments
     filtered_segments = filtered_segments.assign(
         node_from=filtered_segments['ref'].str.split('-', expand=True)[0],
@@ -83,17 +108,41 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
     intersecting_indices = point_geodf_filtered_buffered[point_geodf_filtered_buffered.intersects(combined_polylines)].index
     matched_nodes_all = point_geodf_filtered.loc[intersecting_indices]
     matched_nodes = matched_nodes_all[matched_nodes_all['rcn_ref'].isin(unique_nodes)]
-    
+
     # Return matched segments and matched nodes with GPX metadata
     filtered_segments["gpx_name"] = gpx_name
     filtered_segments["gpx_date"] = gpx_time
     matched_nodes = matched_nodes.assign(gpx_name=gpx_name)
     matched_nodes = matched_nodes.assign(gpx_date=gpx_time)
-    
+
     return filtered_segments, matched_nodes
 
-# Main function to process zip file
-def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False):
+def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False, 
+                    convert=False):
+    """
+    Processes a ZIP archive of GPX files, extracting and matching tracks and nodes with a bike network.
+
+    This function unzips GPX files, processes each file to extract track segments 
+    and corresponding nodes using `process_gpx_file`, and combines the results 
+    into unified GeoDataFrames. Optionally, the output can be converted to WGS84.
+
+    Args:
+        zip_file_path (str): Path to the ZIP file containing GPX files.
+        bike_network (GeoDataFrame): GeoDataFrame of bike network segments.
+        point_geodf (GeoDataFrame): GeoDataFrame of bike nodes.
+        debug (bool, optional): If True, enables debug mode for intermediate file saving. Defaults to False.
+        convert (bool, optional): If True, converts output GeoDataFrames to EPSG:4326. Defaults to False.
+
+    Returns:
+        tuple:
+            GeoDataFrame: Combined bike network segments matched with all GPX tracks.
+            GeoDataFrame: Combined matched bike nodes corresponding to the segments.
+    """
+    # Ensure target folder is empty
+    if os.path.exists(zip_folder):
+        shutil.rmtree(zip_folder)   # remove folder and all contents
+    os.makedirs(zip_folder, exist_ok=True)
+
     # Unzip the GPX files
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(zip_folder)
@@ -105,14 +154,22 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False):
     # Loop through each GPX file in the unzipped folder
     for gpx_file in os.listdir(zip_folder):
         if gpx_file.endswith(".gpx"):
+
             gpx_file_path = os.path.join(zip_folder, gpx_file)
+
             # Process each GPX file
             print("Processing file: " + gpx_file_path)
             bike_segments, matched_nodes = process_gpx_file(gpx_file_path, bike_network, point_geodf, debug)
-            
+
             # Append results to the combined GeoDataFrames
             all_segments = gpd.GeoDataFrame(pd.concat([all_segments, bike_segments], ignore_index=True))
             all_nodes = gpd.GeoDataFrame(pd.concat([all_nodes, matched_nodes], ignore_index=True))
+
+    # Convert back to WGS84 if needed (e.g. requirement for Dash apps)
+    if convert and not all_segments.empty and not all_nodes.empty:
+        print(f"Converting outputs from {all_segments.crs} to EPSG:4326")
+        all_segments = all_segments.to_crs(epsg=4326)
+        all_nodes = all_nodes.to_crs(epsg=4326)
     
     print("Done!")
     return all_segments, all_nodes
