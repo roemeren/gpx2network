@@ -1,6 +1,6 @@
 from shared.common import *
-from shared.process_gpx import *
-from shared.download_data import *
+from shared.geoprocessing import *
+from shared.download import *
 import time
 
 start_time = time.time()
