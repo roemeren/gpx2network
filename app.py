@@ -1,3 +1,8 @@
+"""
+TODO: investigate preloading the network layer and toggle visibility via style
+to further reduce rendering time
+"""
+
 # Custom icon as per official docs https://leafletjs.com/examples/custom-icons/
 import geopandas as gpd
 import pandas as pd
