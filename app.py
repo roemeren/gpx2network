@@ -112,7 +112,13 @@ app.layout = html.Div([
                 children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
             ),
             dl.LayerGroup(id="layer_group_points", children=[]),
-            dl.LayerGroup(id="layer_group_network", children=[]),
+            # Preloaded network layer
+            dl.GeoJSON(
+                data=geojson_network,
+                id='geojson_network',
+                # initially hidden
+                options=dict(style=dict(color=color_network, weight=1, opacity=0))
+            ),
             dl.LayerGroup(id="layer_group_click", children=[])
         ],
         center=initial_center,
@@ -131,7 +137,19 @@ app.layout = html.Div([
 )
 def show_info(zoom, n_clicks, contents, filename):
     """
-    NOTE: Dash Leaflet (dl.Map) does not emit zoom or center properties unless they are explicitly initialized.
+    Display current map zoom, button click count, and uploaded file name.
+
+    Args:
+        zoom (int): Current zoom level of the map.
+        n_clicks (int): Number of times the process button has been clicked.
+        contents (str or None): Contents of the uploaded file.
+        filename (str or None): Name of the uploaded file.
+
+    Returns:
+        str: Formatted string showing zoom, number of clicks, and file name.
+
+    Note:
+        Dash Leaflet (dl.Map) does not emit zoom or center properties unless they are explicitly initialized.
     """
     try:
         return f"Zoom: {zoom}, Number of clicks: {n_clicks}, File name: {filename}"
@@ -140,12 +158,20 @@ def show_info(zoom, n_clicks, contents, filename):
         print(f"zoom: {zoom}")
         return "Error in show_zoom"
 
-# Zoom-dependent points layer
 @app.callback(
     Output('layer_group_points', 'children'),
     Input("map", "zoom")
 )
 def update_point_layer(zoom):
+    """
+    Show or hide the points layer based on the map zoom level.
+
+    Args:
+        zoom (int): Current zoom level of the map.
+
+    Returns:
+        list: List of Dash Leaflet children for the points LayerGroup.
+    """
     children = []
     if zoom >= min_zoom_points:
         children.append(
@@ -156,27 +182,43 @@ def update_point_layer(zoom):
         )
     return children
 
-# Checklist-based network layer
 @app.callback(
-    Output('layer_group_network', 'children'),
+    Output('geojson_network', 'options'),
     Input('toggle_network', 'value')
 )
-def toggle_network_layer(selected):
-    if "network" in selected:
-        return [
-            dl.GeoJSON(
-                data=geojson_network,
-                options=dict(style=dict(color=color_network, weight=1, opacity=0.7))
-            )
-        ]
-    return []
+def toggle_network_visibility(selected):
+    """
+    Toggle the visibility of the preloaded network layer based on checklist selection.
 
-# Add test marker
+    Args:
+        selected (list): List of selected values from the network checklist.
+
+    Returns:
+        dict: Dash Leaflet style dict updating the layer's opacity.
+
+    Note:
+        The network GeoJSON is preloaded and its visibility is toggled by changing
+        the opacity, which greatly improves rendering speed compared to dynamically
+        adding or removing the layer.
+    """
+    if 'network' in selected:
+        return dict(style=dict(color=color_network, weight=1, opacity=0.7))
+    return dict(style=dict(color=color_network, weight=1, opacity=0))
+
 @app.callback(
     Output("layer_group_click", "children"),
     Input("btn_process", "n_clicks")
 )
 def add_initial_center(n_clicks):
+    """
+    Add a marker at the map's initial center when the button is clicked.
+
+    Args:
+        n_clicks (int): Number of times the button has been clicked.
+
+    Returns:
+        list: List containing a single Dash Leaflet Marker placed at the initial center.
+    """
     if n_clicks:
         marker = dl.Marker(
             position=initial_center,
