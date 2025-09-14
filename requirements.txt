@@ -3,3 +3,4 @@ Shapely==2.0.6
 geopandas==1.0.1
 numpy==2.1.2
 gdown==5.2.0
+dash==3.2.0

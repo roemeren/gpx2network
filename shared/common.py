@@ -12,7 +12,7 @@ from shapely.geometry import LineString, MultiLineString
 from datetime import datetime
 
 # constants
-zip_file_path = "data/raw/gpx-test.zip"
+zip_file_path = "data/raw/gpx-test2.zip"
 zip_folder = "data/raw/unzipped_gpx"
 res_folder = "data/intermediate"
 segments_file_path = "data/processed/all_matched_segments.geojson"
