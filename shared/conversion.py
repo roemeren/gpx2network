@@ -1,5 +1,7 @@
 import os
 import xml.etree.ElementTree as ET
+import geopandas as gpd
+from pathlib import Path
 
 def tcx_to_gpx(tcx_path: str, gpx_path: str):
     """Convert a single TCX file to a GPX file.
@@ -80,6 +82,13 @@ def batch_convert(input_folder: str, output_folder: str):
     Args:
         input_folder (str): Path to the folder containing TCX files.
         output_folder (str): Path to the folder where GPX files will be saved.
+
+    Example:
+        # Change these paths to your folders
+        input_dir = "../data/raw/tcx"
+        output_dir = "../data/raw/gpx"
+        batch_convert(input_dir, output_dir)
+        print("All files converted.")
     """
     os.makedirs(output_folder, exist_ok=True)
     for fname in os.listdir(input_folder):
@@ -91,10 +100,31 @@ def batch_convert(input_folder: str, output_folder: str):
             print(f"Converting {fname} -> {os.path.basename(out_path)}")
             tcx_to_gpx(in_path, out_path)
 
+def simplify_geojson(input_path: str, tolerance: float = 0.0001):
+    """
+    Simplify the geometries of a GeoJSON file and save the result to a new file
+    with '_simplified' appended to the original filename.
 
-if __name__ == "__main__":
-    # Change these paths to your folders
-    input_dir = "../data/raw/tcx"
-    output_dir = "../data/raw/gpx"
-    batch_convert(input_dir, output_dir)
-    print("All files converted.")
+    The output file will be saved in the same directory as the input file.
+
+    Args:
+        input_path (str): Full path to the input GeoJSON file.
+        tolerance (float, optional): Simplification tolerance. Higher values result in more simplification. Default is 0.0001.
+
+    Returns:
+        gpd.GeoDataFrame: The simplified GeoDataFrame.
+
+    Example:
+        simplified_gdf = simplify_geojson("data/intermediate/gdf_multiline.geojson")
+        print("Simplified file saved.")
+    """
+    # Simple string manipulation to get output path
+    if input_path.lower().endswith(".geojson"):
+        output_path = input_path[:-8] + "_simplified.geojson"
+    else:
+        output_path = input_path + "_simplified.geojson"
+
+    gdf = gpd.read_file(input_path)
+    gdf['geometry'] = gdf['geometry'].simplify(tolerance=tolerance, preserve_topology=True)
+    gdf.to_file(output_path, driver='GeoJSON')
+    print(f"Simplified GeoJSON saved to: {output_path}")
