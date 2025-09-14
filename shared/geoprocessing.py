@@ -28,7 +28,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
     
     # Extract GPX metadata (file name and modification time)
     gpx_name = os.path.basename(gpx_file_path)
-    modification_time = datetime.fromtimestamp(os.path.getmtime(gpx_file_path))
+    modification_time = datetime.fromtimestamp(os.path.getmtime(gpx_file_path)) # NOT A GOOD TIME INDICATOR
 
     # Extract track segments as LineStrings
     line_segments = []
@@ -62,7 +62,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
     # Extract start time (if available)
     start_time = gpx.tracks[0].segments[0].points[0].time if gpx.tracks else None
     gpx_time = modification_time if start_time is None else start_time
-    gpx_time = gpx_time.date()  # Truncate to date
+    gpx_time = gpx_time.date()  # Truncate to date (NOTE: NOT ACTUAL DATE OF THE GPX)
 
     # Step 2: Buffer GPX track and find intersections with bike network
     # note: copy and assign needed in order to avoid SettingWithCopyWarning
