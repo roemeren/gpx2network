@@ -11,7 +11,7 @@ def ensure_data():
     Ensure that required GeoJSON data and cached Pickle files exist locally.
 
     - Downloads missing GeoJSON files from Google Drive into `data/intermediate`.
-    - Creates corresponding `.pkl` files (faster to load) if they do not yet exist.
+    - Creates corresponding `.pkl` files (containing GeoDataFrame objects for faster loading) if they do not yet exist.
 
     Returns:
         dict: A mapping from original GeoJSON filenames to their local Pickle paths.
