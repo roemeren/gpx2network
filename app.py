@@ -12,7 +12,7 @@ from dash.dependencies import Input, Output, State
 
 multiline_dissolved_geojson = 'data/processed/all_matched_segments.geojson'
 point_geojson = 'data/processed/all_matched_nodes.geojson'
-network_geojson = 'data/intermediate/gdf_multiline.geojson'
+network_geojson = 'data/intermediate/gdf_multiline_simplified.geojson'
 min_zoom_points = 11
 color_match = '#f39c12'
 color_network = '#7f8c8d'
@@ -116,6 +116,24 @@ app.layout = html.Div([
     ),
     html.Div(id="map-center-output")
 ])
+
+@app.callback(
+    Output("map-center-output", "children"),
+    Input("map", "zoom"),
+    Input("btn_process", "n_clicks"),
+    Input("upload_data", "contents"),
+    State('upload_data', 'filename')
+)
+def show_info(zoom, n_clicks, contents, filename):
+    """
+    NOTE: Dash Leaflet (dl.Map) does not emit zoom or center properties unless they are explicitly initialized.
+    """
+    try:
+        return f"Zoom: {zoom}, Number of clicks: {n_clicks}, File name: {filename}"
+    except Exception as e:
+        print(f"Error in show_zoom: {e}")
+        print(f"zoom: {zoom}")
+        return "Error in show_zoom"
 
 # Zoom-dependent points layer
 @app.callback(
