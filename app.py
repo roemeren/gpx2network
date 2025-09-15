@@ -170,6 +170,8 @@ def process_zip(n_clicks, filename):
                                               point_geodf)
 
     # Save results as GeoJSON for further use
+    segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments.geojson")
+    nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes.geojson")
     all_segments.to_file(segments_file_path, driver="GeoJSON")
     all_nodes.to_file(nodes_file_path, driver="GeoJSON")
 

@@ -24,10 +24,7 @@ from dash.exceptions import PreventUpdate
 # ---------- Constants ----------
 # files and folders
 UPLOAD_FOLDER = "data/uploads"
-zip_folder = "data/uploads/unzipped_gpx"
-res_folder = "data/intermediate"
-segments_file_path = "data/processed/all_matched_segments.geojson"
-nodes_file_path = "data/processed/all_matched_nodes.geojson"
+RES_FOLDER = "data/processed"
 
 # processing
 buffer_distance = 20  # buffer distance in meters
