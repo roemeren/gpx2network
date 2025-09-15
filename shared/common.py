@@ -38,3 +38,6 @@ progress_state = {"pct": 0, "done": False, "btn-disabled": False}
 network_geojson = 'data/intermediate/gdf_multiline_simplified.geojson'
 color_match = '#f39c12'
 color_network = '#7f8c8d'
+min_zoom_points = 11
+initial_center =  [50.84606, 4.35213]
+initial_zoom = 10

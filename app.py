@@ -2,24 +2,22 @@ from shared.common import *
 from shared.geoprocessing import *
 from shared.download import *
 
-# Initialization
-initial_center =  [50.84606, 4.35213]
-initial_zoom = 10
-
 # Ensure data and caches
 pickle_paths = ensure_data()
 
-# Load bike network GeoDataFrames
+# Load bike network GeoDataFrame (for processing)
 with open(pickle_paths["gdf_multiline_projected.geojson"], "rb") as f:
     bike_network = pickle.load(f)
 
-# Load bike network GeoJSON lines
+# Load bike network GeoJSON lines (for mapping)
 with open(network_geojson , "r") as f:
    geojson_network = json.load(f)
 
-# Load bike network GeoJSON points
+# Load bike network GeoJSON points (for mapping)
 with open(pickle_paths["gdf_point_projected.geojson"], "rb") as f:
     point_geodf = pickle.load(f)
+
+geojson_points = {}
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -59,7 +57,8 @@ app.layout = dbc.Container(
                     html.Div(id="process-status"),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=500, disabled=True),
-                    dcc.Store(id="dummy-store")
+                    dcc.Store(id="dummy-store"),
+                    dcc.Store(id="geojson-store", data={})
                 ],
                 width=3
             ),
@@ -82,6 +81,13 @@ app.layout = dbc.Container(
                             html.H2(id="kpi-totlength", children="–")
                         ])), width=4),
                     ], className="mb-3"),
+                    dcc.Checklist(
+                        id="toggle-network",
+                        options=[{"label": "Show Network", "value": "network"}],
+                        value=[],
+                        inline=True,
+                        style={"marginLeft": "20px"}
+                    ),
                     # Map
                     dl.Map(
                         center=initial_center, 
@@ -94,23 +100,17 @@ app.layout = dbc.Container(
                             ),
                             # Matched segments layer
                             dl.LayerGroup(id="geojson-lines"),
-                            # Preloaded network layer
+                            # Preloaded network layer (initially hidden)
                             dl.GeoJSON(
                                 data=geojson_network,
                                 id='geojson-network',
-                                # initially hidden
                                 options=dict(style=dict(color=color_network, weight=1, opacity=0))
-                            )
+                            ),
+                            # Matched nodes layer (initially hidden)
+                            dl.LayerGroup(id="layer-group-points", children=[])
                         ],
                         id="map"
                     ),
-                    dcc.Checklist(
-                        id="toggle-network",
-                        options=[{"label": "Show Network", "value": "network"}],
-                        value=[],
-                        inline=True,
-                        style={"marginLeft": "20px"}
-                    )
                 ],
                 width=9
             )
@@ -145,6 +145,7 @@ def save_uploaded_file(contents, filename):
 @app.callback(
     Output("process-status", "children"),
     Output("geojson-lines", "children"),
+    Output("geojson-store", "data"),
     Output("kpi-totsegments", "children"),
     Output("kpi-totnodes", "children"),
     Output("kpi-totlength", "children"),
@@ -177,8 +178,9 @@ def process_zip(n_clicks, filename):
         all_segments_wgs84 = all_segments.to_crs(epsg=4326)
         all_nodes_wgs84 = all_nodes.to_crs(epsg=4326)
 
-    # Read file for mapping
+    # Read files for mapping
     geojson_lines = all_segments_wgs84.__geo_interface__
+    geojson_points = all_nodes_wgs84.__geo_interface__
 
     # Compute KPIs using projected coordinates
     total_segments = len(all_segments)
@@ -196,6 +198,7 @@ def process_zip(n_clicks, filename):
             options=dict(style=dict(color=color_match, weight=5)),
             children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
         ),
+        geojson_points,
         total_segments,
         total_nodes,
         total_length
@@ -245,6 +248,32 @@ def toggle_network_visibility(selected):
     if 'network' in selected:
         return dict(style=dict(color=color_network, weight=1, opacity=0.6))
     return dict(style=dict(color=color_network, weight=1, opacity=0))
+
+@app.callback(
+    Output('layer-group-points', 'children'),
+    Input("map", "zoom"),
+    Input("geojson-store", "data")
+)
+def update_point_layer(zoom, points):
+    """
+    Display matched bike-node points when zoomed in.
+
+    Args:
+        zoom (int): Current map zoom level.
+        points (dict): GeoJSON points data from the geojson-store.
+
+    Returns:
+        list: dl.GeoJSON layer(s) if zoom ≥ min_zoom_points, else [].
+    """
+    children = []
+    if zoom >= min_zoom_points:
+        children.append(
+            dl.GeoJSON(
+                data=points,
+                children=[dl.Tooltip(content="This is a <b>bike node</b>")]
+            )
+        )
+    return children
 
 if __name__ == '__main__':
     app.run(debug=True)
