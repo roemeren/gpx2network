@@ -1,6 +1,6 @@
 from shared.common import *
 
-def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
+def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     """
     Extracts and matches GPX track segments and nodes with a bike network.
 
@@ -13,7 +13,6 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
         gpx_file_path (str): Path to the GPX file.
         bike_network (GeoDataFrame): GeoDataFrame of bike network segments.
         point_geodf (GeoDataFrame): GeoDataFrame of bike nodes.
-        debug (bool, optional): If True, saves intermediate GeoJSON files. Defaults to False.
 
     Returns:
         tuple:
@@ -52,12 +51,6 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
 
     # Reproject to Belgian Lambert 2008
     gdf_gpx = gdf.to_crs("EPSG:3812")
-
-    # Save some intermediate results in case of debug mode
-    if debug:
-        out_path = os.path.join(res_folder, gpx_name.replace(".gpx", "") + "-converted.geojson")
-        print("\tSaving converted gpx to " + out_path)
-        gdf_gpx.to_file(out_path, driver="GeoJSON")
     
     # Extract start time (if available)
     start_time = gpx.tracks[0].segments[0].points[0].time if gpx.tracks else None
@@ -117,8 +110,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf, debug=False):
 
     return filtered_segments, matched_nodes
 
-def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False, 
-                    convert=False):
+def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     """
     Processes a ZIP archive of GPX files, extracting and matching tracks and nodes with a bike network.
 
@@ -130,8 +122,6 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False,
         zip_file_path (str): Path to the ZIP file containing GPX files.
         bike_network (GeoDataFrame): GeoDataFrame of bike network segments.
         point_geodf (GeoDataFrame): GeoDataFrame of bike nodes.
-        debug (bool, optional): If True, enables debug mode for intermediate file saving. Defaults to False.
-        convert (bool, optional): If True, converts output GeoDataFrames to EPSG:4326. Defaults to False.
 
     Returns:
         tuple:
@@ -140,7 +130,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False,
     """
     # Ensure target folder is empty
     if os.path.exists(zip_folder):
-        shutil.rmtree(zip_folder)   # remove folder and all contents
+        shutil.rmtree(zip_folder)
     os.makedirs(zip_folder, exist_ok=True)
 
     # Unzip the GPX files
@@ -152,24 +142,26 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf, debug=False,
     all_nodes = gpd.GeoDataFrame()
 
     # Loop through each GPX file in the unzipped folder
-    for gpx_file in os.listdir(zip_folder):
+    gpx_files = [f for f in os.listdir(zip_folder) if f.endswith(".gpx")]
+    total = len(gpx_files)
+
+    for i, gpx_file in enumerate(gpx_files, start=1):
         if gpx_file.endswith(".gpx"):
 
             gpx_file_path = os.path.join(zip_folder, gpx_file)
 
             # Process each GPX file
             print("Processing file: " + gpx_file_path)
-            bike_segments, matched_nodes = process_gpx_file(gpx_file_path, bike_network, point_geodf, debug)
+            bike_segments, matched_nodes = process_gpx_file(gpx_file_path, bike_network, point_geodf)
 
             # Append results to the combined GeoDataFrames
             all_segments = gpd.GeoDataFrame(pd.concat([all_segments, bike_segments], ignore_index=True))
             all_nodes = gpd.GeoDataFrame(pd.concat([all_nodes, matched_nodes], ignore_index=True))
 
-    # Convert back to WGS84 if needed (e.g. requirement for Dash apps)
-    if convert and not all_segments.empty and not all_nodes.empty:
-        print(f"Converting outputs from {all_segments.crs} to EPSG:4326")
-        all_segments = all_segments.to_crs(epsg=4326)
-        all_nodes = all_nodes.to_crs(epsg=4326)
+            # update progress for polling
+            pct = round(i / total * 100)
+            progress_state["pct"] = pct
     
-    print("Done!")
+    print("Processing done!")
+
     return all_segments, all_nodes
