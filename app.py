@@ -9,10 +9,15 @@ initial_zoom = 10
 # Ensure data and caches
 pickle_paths = ensure_data()
 
-# Read cached bike network GeoDataFrames
+# Load bike network GeoDataFrames
 with open(pickle_paths["gdf_multiline_projected.geojson"], "rb") as f:
     bike_network = pickle.load(f)
 
+# Load bike network GeoJSON lines
+with open(network_geojson , "r") as f:
+   geojson_network = json.load(f)
+
+# Load bike network GeoJSON points
 with open(pickle_paths["gdf_point_projected.geojson"], "rb") as f:
     point_geodf = pickle.load(f)
 
@@ -87,9 +92,24 @@ app.layout = dbc.Container(
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
                                 attribution='&copy; OSM &copy; <a href="https://carto.com/">CARTO</a>'
                             ),
-                            dl.LayerGroup(id="geojson-layer")
+                            # Matched segments layer
+                            dl.LayerGroup(id="geojson-lines"),
+                            # Preloaded network layer
+                            dl.GeoJSON(
+                                data=geojson_network,
+                                id='geojson-network',
+                                # initially hidden
+                                options=dict(style=dict(color=color_network, weight=1, opacity=0))
+                            )
                         ],
                         id="map"
+                    ),
+                    dcc.Checklist(
+                        id="toggle-network",
+                        options=[{"label": "Show Network", "value": "network"}],
+                        value=[],
+                        inline=True,
+                        style={"marginLeft": "20px"}
                     )
                 ],
                 width=9
@@ -124,7 +144,7 @@ def save_uploaded_file(contents, filename):
 
 @app.callback(
     Output("process-status", "children"),
-    Output("geojson-layer", "children"),
+    Output("geojson-lines", "children"),
     Output("kpi-totsegments", "children"),
     Output("kpi-totnodes", "children"),
     Output("kpi-totlength", "children"),
@@ -158,7 +178,7 @@ def process_zip(n_clicks, filename):
         all_nodes_wgs84 = all_nodes.to_crs(epsg=4326)
 
     # Read file for mapping
-    geojson = all_segments_wgs84.__geo_interface__
+    geojson_lines = all_segments_wgs84.__geo_interface__
 
     # Compute KPIs using projected coordinates
     total_segments = len(all_segments)
@@ -170,7 +190,12 @@ def process_zip(n_clicks, filename):
 
     return (
         f"Finished processing {filename}",
-        [dl.GeoJSON(data=geojson, id="geojson")],
+        dl.GeoJSON(
+            data=geojson_lines, 
+            id='geojson-seg',
+            options=dict(style=dict(color=color_match, weight=5)),
+            children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
+        ),
         total_segments,
         total_nodes,
         total_length
@@ -197,6 +222,29 @@ def update_progress(_):
 )
 def show_info(c, f):
     return f"File name: {f}"
+
+@app.callback(
+    Output('geojson-network', 'options'),
+    Input('toggle-network', 'value')
+)
+def toggle_network_visibility(selected):
+    """
+    Toggle the visibility of the preloaded network layer based on checklist selection.
+
+    Args:
+        selected (list): List of selected values from the network checklist.
+
+    Returns:
+        dict: Dash Leaflet style dict updating the layer's opacity.
+
+    Note:
+        The network GeoJSON is preloaded and its visibility is toggled by changing
+        the opacity, which greatly improves rendering speed compared to dynamically
+        adding or removing the layer.
+    """
+    if 'network' in selected:
+        return dict(style=dict(color=color_network, weight=1, opacity=0.6))
+    return dict(style=dict(color=color_network, weight=1, opacity=0))
 
 if __name__ == '__main__':
     app.run(debug=True)

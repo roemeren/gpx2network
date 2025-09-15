@@ -35,3 +35,6 @@ intersect_threshold = 0.75
 
 # application
 progress_state = {"pct": 0, "done": False, "btn-disabled": False}
+network_geojson = 'data/intermediate/gdf_multiline_simplified.geojson'
+color_match = '#f39c12'
+color_network = '#7f8c8d'
