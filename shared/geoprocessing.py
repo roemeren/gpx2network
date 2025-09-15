@@ -129,6 +129,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
             GeoDataFrame: Combined matched bike nodes corresponding to the segments.
     """
     # Ensure target folder is empty
+    zip_folder = os.path.join(UPLOAD_FOLDER, "unzipped_gpx")
     if os.path.exists(zip_folder):
         shutil.rmtree(zip_folder)
     os.makedirs(zip_folder, exist_ok=True)
@@ -165,3 +166,13 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     print("Processing done!")
 
     return all_segments, all_nodes
+
+def create_result_zip(segments_path, nodes_path):
+    """
+    Zip the two GeoJSON result files and return the zip file path.
+    """
+    zip_path = os.path.join(RES_FOLDER, "matched_results.zip")
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.write(segments_path, arcname="all_matched_segments_wgs84.geojson")
+        zf.write(nodes_path, arcname="all_matched_nodes_wgs84.geojson")
+    return zip_path

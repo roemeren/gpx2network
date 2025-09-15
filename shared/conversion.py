@@ -1,7 +1,4 @@
-import os
-import xml.etree.ElementTree as ET
-import geopandas as gpd
-from pathlib import Path
+from shared.common import *
 
 def tcx_to_gpx(tcx_path: str, gpx_path: str):
     """Convert a single TCX file to a GPX file.

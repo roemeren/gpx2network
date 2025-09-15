@@ -5,6 +5,9 @@ from shared.download import *
 # Ensure data and caches
 pickle_paths = ensure_data()
 
+# Ensure static folder exists
+os.makedirs(RES_FOLDER, exist_ok=True)
+
 # Load bike network GeoDataFrame (for processing)
 with open(pickle_paths["gdf_multiline_projected.geojson"], "rb") as f:
     bike_network = pickle.load(f)
@@ -55,6 +58,18 @@ app.layout = dbc.Container(
                     dbc.Button("Process ZIP", id="btn-process", color="primary", className="mb-2", disabled=True),
                     dbc.Progress(id="progress", value=0, striped=True, animated=True, className="mb-2"),
                     html.Div(id="process-status"),
+                    html.Div(
+                        dbc.Button(
+                            "Download Results",
+                            id="btn-download",
+                            color="success",
+                            className="mt-2",
+                            external_link=True,
+                            disabled=True,           # initially disabled
+                            style={"display": "none"} # initially hidden
+                        ),
+                        id="download-container"
+                    ),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=500, disabled=True),
                     dcc.Store(id="dummy-store"),
@@ -98,14 +113,14 @@ app.layout = dbc.Container(
                                 url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
                                 attribution='&copy; OSM &copy; <a href="https://carto.com/">CARTO</a>'
                             ),
-                            # Matched segments layer
-                            dl.LayerGroup(id="geojson-lines"),
                             # Preloaded network layer (initially hidden)
                             dl.GeoJSON(
                                 data=geojson_network,
                                 id='geojson-network',
                                 options=dict(style=dict(color=color_network, weight=1, opacity=0))
                             ),
+                            # Matched segments layer (drawn on top of network)
+                            dl.LayerGroup(id="geojson-lines"),                     
                             # Matched nodes layer (initially hidden)
                             dl.LayerGroup(id="layer-group-points", children=[])
                         ],
@@ -121,7 +136,6 @@ app.layout = dbc.Container(
 
 # ---------- Callbacks ----------
 @app.callback(
-    # Output("btn-process", "disabled"),
     Output("dummy-store", "data"),
     Input("upload-zip", "contents"),
     State("upload-zip", "filename"),
@@ -146,6 +160,7 @@ def save_uploaded_file(contents, filename):
     Output("process-status", "children"),
     Output("geojson-lines", "children"),
     Output("geojson-store", "data"),
+    Output("download-container", "children"),
     Output("kpi-totsegments", "children"),
     Output("kpi-totnodes", "children"),
     Output("kpi-totlength", "children"),
@@ -161,7 +176,8 @@ def process_zip(n_clicks, filename):
     
     # Initialize progress
     progress_state["pct"] = 0
-    progress_state["btn-disabled"] = True
+    progress_state["btn-process-disabled"] = True
+    progress_state["btn-download-disabled"] = True
 
     zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
 
@@ -169,16 +185,31 @@ def process_zip(n_clicks, filename):
     all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network,
                                               point_geodf)
 
-    # Save results as GeoJSON for further use
-    segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments.geojson")
-    nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes.geojson")
-    all_segments.to_file(segments_file_path, driver="GeoJSON")
-    all_nodes.to_file(nodes_file_path, driver="GeoJSON")
-
     # Convert back to WGS84 for mapping
     if not all_segments.empty and not all_nodes.empty:
         all_segments_wgs84 = all_segments.to_crs(epsg=4326)
         all_nodes_wgs84 = all_nodes.to_crs(epsg=4326)
+
+    # Save WGS84 results as GeoJSON for further use
+    segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments_wgs84.geojson")
+    nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes_wgs84.geojson")
+    all_segments_wgs84.to_file(segments_file_path, driver="GeoJSON")
+    all_nodes_wgs84.to_file(nodes_file_path, driver="GeoJSON")
+
+    # Create zip of results ---
+    results_zip = create_result_zip(segments_file_path, nodes_file_path)
+
+    # Build a download link (served from /static if RES_FOLDER is inside it)
+    rel_path = os.path.relpath(results_zip, start="static")
+    download_link = dbc.Button(
+        "Download Results",
+        href=f"/static/{rel_path.replace(os.sep, '/')}",
+        color="success",
+        className="mt-2",
+        external_link=True,
+        id="btn-download",
+        disabled=False
+    )
 
     # Read files for mapping
     geojson_lines = all_segments_wgs84.__geo_interface__
@@ -190,7 +221,8 @@ def process_zip(n_clicks, filename):
     total_length = round(all_segments.length.sum()/1000, 2)
 
     # Re-enable button
-    progress_state["btn-disabled"] = False
+    progress_state["btn-process-disabled"] = False
+    progress_state["btn-download-disabled"] = False
 
     return (
         f"Finished processing {filename}",
@@ -201,6 +233,7 @@ def process_zip(n_clicks, filename):
             children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
         ),
         geojson_points,
+        download_link,
         total_segments,
         total_nodes,
         total_length
@@ -211,14 +244,16 @@ def process_zip(n_clicks, filename):
     Output("progress", "label"),
     Output("progress-poller", "disabled"), # required otherwise no update
     Output("btn-process", "disabled"),
+    Output("btn-download", "disabled"),
     Input("progress-poller", "n_intervals")
 )
 def update_progress(_):
     pct = progress_state.get("pct", 0)
     done = progress_state.get("done", False)
     label = f"{pct}%" if pct >= 5 else ""
-    btn_disabled = progress_state.get("btn-disabled", False)
-    return pct, label, done, btn_disabled
+    btn_disabled = progress_state.get("btn-process-disabled", False)
+    btn_download_disabled = progress_state.get("btn-download-disabled", False)
+    return pct, label, done, btn_disabled, btn_download_disabled
 
 @app.callback(
     Output("browse-info", "children"),
