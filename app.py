@@ -158,10 +158,8 @@ app.layout = dbc.Container(
                                 id='geojson-network',
                                 options=dict(style=dict(color=color_network, weight=1, opacity=0))
                             ),
-                            # Matched segments layer (drawn on top of network)
-                            dl.LayerGroup(id="layer-group-segments"),                     
-                            # Matched nodes layer (initially hidden)
-                            dl.LayerGroup(id="layer-group-nodes", children=[])
+                            # Matched segments & nodes layers (drawn on top of network)
+                            dl.LayerGroup(id="layer-group-match"),                     
                         ],
                         id="map"
                     ),
@@ -269,15 +267,14 @@ def process_zip(n_clicks, filename):
     Output("kpi-totsegments", "children"),
     Output("kpi-totnodes", "children"),
     Output("kpi-totlength", "children"),
-    Output("layer-group-segments", "children"),
-    Output("layer-group-nodes", "children"),
+    Output("layer-group-match", "children"),
     Input("geojson-store", "data"),
     Input("start-date-picker", "date"),
     Input("end-date-picker", "date"),
     Input("map", "zoom")
 )
 def update_kpis(store, start_date, end_date, zoom):
-    if not store: return None, None, None, None, None
+    if not store: return None, None, None, None
     
     # Load segments GeoDataFrame from stored GeoJSON
     gdf_segments = gpd.GeoDataFrame.from_features(store["segments"]["features"])
@@ -286,8 +283,6 @@ def update_kpis(store, start_date, end_date, zoom):
     # Convert gpx_date from str to date
     gdf_segments["gpx_date"] = pd.to_datetime(gdf_segments["gpx_date"], format="%Y-%m-%d").dt.date
     gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"], format="%Y-%m-%d").dt.date
-
-    print(gdf_segments.info())
 
     # Safely parse start/end dates from pickers to datetime
     try:
@@ -303,7 +298,7 @@ def update_kpis(store, start_date, end_date, zoom):
         )
     except Exception:
         # Exit callback early if user is still typing / invalid input
-        return None, None, None, None, None
+        return None, None, None, None
 
     # Filter by date range
     mask = (gdf_segments["gpx_date"] >= start) & (gdf_segments["gpx_date"] <= end)
@@ -317,7 +312,6 @@ def update_kpis(store, start_date, end_date, zoom):
     total_length = round(
         gdf_segments_filtered.drop_duplicates("osm_id")["length_km"].sum(), 2
     )
-    print(f"Length filtered segments: {len(gdf_segments_filtered)}")
 
     if zoom >= min_zoom_points:
         res_points = dl.GeoJSON(
@@ -331,13 +325,13 @@ def update_kpis(store, start_date, end_date, zoom):
         total_segments, 
         total_nodes, 
         total_length,
-        dl.GeoJSON(
+        [dl.GeoJSON(
             data=gdf_segments_filtered.__geo_interface__, 
             id='geojson-seg',
             options=dict(style=dict(color=color_match, weight=5)),
             children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
         ),
-        res_points
+        res_points]
     )
 
 @app.callback(
