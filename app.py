@@ -75,7 +75,9 @@ app.layout = dbc.Container(
                     dcc.Interval(id="progress-poller", interval=500, disabled=True),
                     dcc.Store(id="dummy-store"),
                     # store matched segments and nodes
-                    dcc.Store(id="geojson-store", data={})
+                    dcc.Store(id="geojson-store-full", data={}),
+                    # store filtered matched segments and nodes
+                    dcc.Store(id="geojson-store-filtered", data={})
                 ],
                 width=3
             ),
@@ -159,7 +161,8 @@ app.layout = dbc.Container(
                                 options=dict(style=dict(color=color_network, weight=1, opacity=0))
                             ),
                             # Matched segments & nodes layers (drawn on top of network)
-                            dl.LayerGroup(id="layer-group-match"),                     
+                            dl.LayerGroup(id="layer-segments"),
+                            dl.LayerGroup(id="layer-nodes")                
                         ],
                         id="map"
                     ),
@@ -195,7 +198,7 @@ def save_uploaded_file(contents, filename):
 
 @app.callback(
     Output("process-status", "children"),
-    Output("geojson-store", "data"),
+    Output("geojson-store-full", "data"),
     Output("download-container", "children"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
@@ -250,9 +253,10 @@ def process_zip(n_clicks, filename):
     geojson_lines = all_segments.__geo_interface__
     geojson_points = all_nodes.__geo_interface__
 
-    # Re-enable button
+    # Re-enable buttons & reset progress
     progress_state["btn-process-disabled"] = False
     progress_state["btn-download-disabled"] = False
+    progress_state["pct"] = 0
 
     return (
         f"Finished processing {filename}",
@@ -267,71 +271,101 @@ def process_zip(n_clicks, filename):
     Output("kpi-totsegments", "children"),
     Output("kpi-totnodes", "children"),
     Output("kpi-totlength", "children"),
-    Output("layer-group-match", "children"),
-    Input("geojson-store", "data"),
+    Output("geojson-store-filtered", "data"),
+    Input("geojson-store-full", "data"),
     Input("start-date-picker", "date"),
     Input("end-date-picker", "date"),
-    Input("map", "zoom")
 )
-def update_kpis(store, start_date, end_date, zoom):
-    if not store: return None, None, None, None
-    
-    # Load segments GeoDataFrame from stored GeoJSON
+def filter_data(store, start_date, end_date):
+    """Filter bike segments and nodes by date and compute KPIs.
+
+    Args:
+        store (dict): Original GeoJSON data with 'segments' and 'nodes'.
+        start_date (str): Start date (YYYY-MM-DD), defaults to earliest date.
+        end_date (str): End date (YYYY-MM-DD), defaults to latest date.
+
+    Returns:
+        tuple: (total_segments, total_nodes, total_length, filtered GeoJSON dict)
+    """
+    if not store:
+        return None, None, None, {}
+
     gdf_segments = gpd.GeoDataFrame.from_features(store["segments"]["features"])
     gdf_nodes = gpd.GeoDataFrame.from_features(store["nodes"]["features"])
 
-    # Convert gpx_date from str to date
-    gdf_segments["gpx_date"] = pd.to_datetime(gdf_segments["gpx_date"], format="%Y-%m-%d").dt.date
-    gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"], format="%Y-%m-%d").dt.date
+    gdf_segments["gpx_date"] = pd.to_datetime(gdf_segments["gpx_date"]).dt.date
+    gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"]).dt.date
 
-    # Safely parse start/end dates from pickers to datetime
     try:
-        start = (
-            pd.to_datetime(start_date).date()
-            if start_date
-            else gdf_segments["gpx_date"].min().date()
-        )
-        end = (
-            pd.to_datetime(end_date).date()
-            if end_date
-            else gdf_segments["gpx_date"].max().date()
-        )
+        start = pd.to_datetime(start_date).date() if start_date else gdf_segments["gpx_date"].min()
+        end = pd.to_datetime(end_date).date() if end_date else gdf_segments["gpx_date"].max()
     except Exception:
-        # Exit callback early if user is still typing / invalid input
-        return None, None, None, None
+        return None, None, None, {}
 
-    # Filter by date range
-    mask = (gdf_segments["gpx_date"] >= start) & (gdf_segments["gpx_date"] <= end)
-    gdf_segments_filtered = gdf_segments.loc[mask]
-    mask = (gdf_nodes["gpx_date"] >= start) & (gdf_nodes["gpx_date"] <= end)
-    gdf_nodes_filtered = gdf_nodes.loc[mask]
+    seg_mask = (gdf_segments["gpx_date"] >= start) & (gdf_segments["gpx_date"] <= end)
+    node_mask = (gdf_nodes["gpx_date"] >= start) & (gdf_nodes["gpx_date"] <= end)
 
-    # Recompute KPIs
+    gdf_segments_filtered = gdf_segments.loc[seg_mask]
+    gdf_nodes_filtered = gdf_nodes.loc[node_mask]
+
     total_segments = gdf_segments_filtered["osm_id"].nunique()
     total_nodes = gdf_nodes_filtered["osm_id"].nunique()
     total_length = round(
         gdf_segments_filtered.drop_duplicates("osm_id")["length_km"].sum(), 2
     )
 
-    if zoom >= min_zoom_points:
-        res_points = dl.GeoJSON(
-            data=gdf_nodes_filtered.__geo_interface__,
-            children=[dl.Tooltip(content="This is a <b>bike node</b>")]
-        )
-    else:
-        res_points = None
-
     return (
-        total_segments, 
-        total_nodes, 
+        total_segments,
+        total_nodes,
         total_length,
-        [dl.GeoJSON(
-            data=gdf_segments_filtered.__geo_interface__, 
-            id='geojson-seg',
-            options=dict(style=dict(color=color_match, weight=5)),
-            children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
-        ),
-        res_points]
+        {
+            "segments": gdf_segments_filtered.__geo_interface__,
+            "nodes": gdf_nodes_filtered.__geo_interface__,
+        }
+    )
+
+@app.callback(
+    Output("layer-segments", "children"),
+    Input("geojson-store-filtered", "data"),
+)
+def update_segments(filtered_data):
+    """Render filtered bike segments on the map.
+
+    Args:
+        filtered_data (dict): Filtered GeoJSON data.
+
+    Returns:
+        dl.GeoJSON or None: Segment layer component.
+    """
+    if not filtered_data:
+        return None
+    return dl.GeoJSON(
+        data=filtered_data["segments"],
+        id="geojson-seg",
+        options=dict(style=dict(color=color_match, weight=5)),
+        children=[dl.Tooltip(content="This is a <b>matched segment</b>")],
+    )
+
+@app.callback(
+    Output("layer-nodes", "children"),
+    Input("geojson-store-filtered", "data"),
+    Input("map", "zoom"),
+)
+def update_nodes(filtered_data, zoom):
+    """Render bike nodes depending on map zoom level.
+
+    Args:
+        filtered_data (dict): Filtered GeoJSON data.
+        zoom (int): Current map zoom level.
+
+    Returns:
+        dl.GeoJSON or None: Node layer component.
+    """
+    if not filtered_data or zoom < min_zoom_points:
+        return None
+    return dl.GeoJSON(
+        data=filtered_data["nodes"],
+        children=[dl.Tooltip(content="This is a <b>bike node</b>")],
     )
 
 @app.callback(
