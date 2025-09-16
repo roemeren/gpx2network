@@ -27,7 +27,6 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     
     # Extract GPX metadata (file name and modification time)
     gpx_name = os.path.basename(gpx_file_path)
-    modification_time = datetime.fromtimestamp(os.path.getmtime(gpx_file_path)) # NOT A GOOD TIME INDICATOR
 
     # Extract track segments as LineStrings
     line_segments = []
@@ -52,10 +51,18 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     # Reproject to Belgian Lambert 2008
     gdf_gpx = gdf.to_crs("EPSG:3812")
     
-    # Extract start time (if available)
-    start_time = gpx.tracks[0].segments[0].points[0].time if gpx.tracks else None
-    gpx_time = modification_time if start_time is None else start_time
-    gpx_time = gpx_time.date()  # Truncate to date (NOTE: NOT ACTUAL DATE OF THE GPX)
+    # Extract activity date (only if timestamps are present → recorded activity)
+    start_time = None
+    if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
+        start_time = gpx.tracks[0].segments[0].points[0].time
+
+    # Use date if timestamp exists, otherwise None
+    gpx_time = start_time.date() if start_time else None
+
+    # Skip further processing if no activity date (not a recorded activity)
+    if gpx_time is None:
+        print("\tWarning: no timestamps found → GPX is not a recorded activity, skipping.")
+        return gpd.GeoDataFrame(), gpd.GeoDataFrame()
 
     # Step 2: Buffer GPX track and find intersections with bike network
     # note: copy and assign needed in order to avoid SettingWithCopyWarning
@@ -65,7 +72,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     
     # Exit the function if no segments are matched
     if bike_segments_matched.empty:
-        print(f"\tWarning: no matched segments found for this file.")
+        print("\tWarning: no bike network segments intersect the GPX track, skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
     
     # Inner function to calculate overlap (apply faster than for loop)
@@ -82,7 +89,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
 
     # Exit the function if there are no segments with sufficient overlap
     if filtered_segments.empty:
-        print(f"\tWarning: no segments found for this file with sufficient overlap.")
+        print(f"\tWarning: matched segments found, but none exceeded the overlap threshold ({intersect_threshold:.0%}), skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
 
     # Step 4: Extract unique nodes from the matched segments
@@ -159,7 +166,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
             all_segments = gpd.GeoDataFrame(pd.concat([all_segments, bike_segments], ignore_index=True))
             all_nodes = gpd.GeoDataFrame(pd.concat([all_nodes, matched_nodes], ignore_index=True))
 
-            # update progress for polling
+            # Update progress for polling
             pct = round(i / total * 100)
             progress_state["pct"] = pct
     
