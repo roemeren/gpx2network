@@ -142,12 +142,12 @@ app.layout = dbc.Container(
                             width="auto",
                             # zIndex and position ensure the calendar popup is on top of the map
                             style={"marginLeft": "20px", "height": "40px", "zIndex": 9999, "position": "relative"}
-                        ),
+                        )
                     ], className="mb-2", align="center"),
                     # Map
                     dl.Map(
                         center=initial_center, 
-                        zoom=initial_zoom, 
+                        zoom=initial_zoom,
                         style={"width": "100%", "height": "500px"},
                         children=[
                             dl.TileLayer(
@@ -162,10 +162,83 @@ app.layout = dbc.Container(
                             ),
                             # Matched segments & nodes layers (drawn on top of network)
                             dl.LayerGroup(id="layer-segments"),
-                            dl.LayerGroup(id="layer-nodes")                
+                            dl.LayerGroup(id="layer-nodes"),
+                            # Highlighted segments
+                            dl.LayerGroup(id="layer-selected-segments"),
+                            # Highlighted segments from nodes
+                            dl.LayerGroup(id="layer-selected-nodes")           
                         ],
                         id="map"
                     ),
+                    dbc.Row(
+                        [
+                            dbc.Col(
+                                [
+                                    html.H4("Aggregated Segment Statistics"),
+                                    html.P(
+                                        "Select one or more segments in the table to highlight them on the map (in red).",
+                                        style={"fontStyle": "italic", "color": "#555", "marginTop": "5px"}
+                                    ),
+                                    dash_table.DataTable(
+                                        id="table-segments-agg",
+                                        columns=[],
+                                        data=[],
+                                        page_size=25,
+                                        row_selectable="multi", # <-- enable row selection
+                                        style_table={
+                                            'maxHeight': '400px', # adjust height as needed
+                                            'overflowY': 'auto',
+                                            'overflowX': 'auto'
+                                        },
+                                        style_cell={
+                                            'textAlign': 'left',
+                                            'padding': '5px',
+                                            'minWidth': '80px',
+                                            'width': '150px',
+                                            'maxWidth': '200px'
+                                        },
+                                        fixed_rows={'headers': True},
+                                        sort_action='native'
+                                    )
+                                ],
+                                width=6,
+                                style={"paddingRight": "10px"}  # add space to the right
+                            ),
+                            dbc.Col(
+                                [
+                                    html.H4("Aggregated Node Statistics"),
+                                    html.P(
+                                        "Select one or more nodes in the table to highlight their segments on the map (in blue).",
+                                        style={"fontStyle": "italic", "color": "#555", "marginTop": "5px"}
+                                    ),
+                                    dash_table.DataTable(
+                                        id="table-nodes-agg",
+                                        columns=[],
+                                        data=[],
+                                        page_size=25,
+                                        row_selectable="multi", # <-- enable row selection
+                                        style_table={
+                                            'maxHeight': '400px',  # same height as segments table
+                                            'overflowY': 'auto',
+                                            'overflowX': 'auto'
+                                        },
+                                        style_cell={
+                                            'textAlign': 'left',
+                                            'padding': '5px',
+                                            'minWidth': '80px',
+                                            'width': '150px',
+                                            'maxWidth': '200px'
+                                        },
+                                        fixed_rows={'headers': True},
+                                        sort_action='native'
+                                    )
+                                ],
+                                width=6,
+                                style={"paddingLeft": "10px"}   # add space to the left
+                            )
+                        ],
+                        className="mt-4"
+                    )
                 ],
                 width=9
             )
@@ -369,6 +442,72 @@ def update_nodes(filtered_data, zoom):
     )
 
 @app.callback(
+    Output("table-segments-agg", "data"),
+    Output("table-segments-agg", "columns"),
+    Output("table-nodes-agg", "data"),
+    Output("table-nodes-agg", "columns"),
+    Input("geojson-store-filtered", "data"),
+)
+def update_aggregated_tables(filtered_data):
+    """Aggregate segment and node data for display in Dash tables.
+
+    Args:
+        filtered_data (dict): GeoJSON-like dictionary with "segments" and "nodes" features.
+
+    Returns:
+        tuple: 
+            seg_data (list[dict]): Aggregated segment records.
+            seg_columns (list[dict]): Column definitions for segments table.
+            node_data (list[dict]): Aggregated node records.
+            node_columns (list[dict]): Column definitions for nodes table.
+    """
+    if not filtered_data:
+        return [], [], [], []
+
+    # --- Segments ---
+    if "segments" in filtered_data and filtered_data["segments"]["features"]:
+        gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
+        # Ensure correct types
+        gdf_seg["gpx_date"] = pd.to_datetime(gdf_seg["gpx_date"])
+        agg_seg = gdf_seg.groupby("ref").agg(
+            length_km=("length_km", "max"),
+            count_gpx=("gpx_name", "nunique"),
+            max_overlap_percentage=("overlap_percentage", "max"),
+            first_date=("gpx_date", "min"),
+            last_date=("gpx_date", "max")
+        ).reset_index()
+        # Apply formatting
+        agg_seg["length_km"] = agg_seg["length_km"].round(2)
+        agg_seg["max_overlap_percentage"] = agg_seg["max_overlap_percentage"].round(2)
+        agg_seg["first_date"] = agg_seg["first_date"].dt.strftime("%Y-%m-%d")
+        agg_seg["last_date"] = agg_seg["last_date"].dt.strftime("%Y-%m-%d")
+        # Sort result
+        agg_seg = agg_seg.sort_values("count_gpx", ascending=False)
+        seg_columns = [{"name": c, "id": c} for c in agg_seg.columns]
+        seg_data = agg_seg.to_dict("records")
+    else:
+        seg_columns, seg_data = [], []
+
+    # --- Nodes ---
+    if "nodes" in filtered_data and filtered_data["nodes"]["features"]:
+        gdf_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
+        gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
+        agg_nodes = gdf_nodes.groupby("rcn_ref").agg(
+            count_gpx=("gpx_date", "nunique"),
+            first_date=("gpx_date", "min"),
+            last_date=("gpx_date", "max")
+        ).reset_index()
+        # Apply formatting
+        agg_nodes["first_date"] = agg_nodes["first_date"].dt.strftime("%Y-%m-%d")
+        agg_nodes["last_date"] = agg_nodes["last_date"].dt.strftime("%Y-%m-%d")
+        node_columns = [{"name": c, "id": c} for c in agg_nodes.columns]
+        node_data = agg_nodes.to_dict("records")
+    else:
+        node_columns, node_data = [], []
+
+    return seg_data, seg_columns, node_data, node_columns
+
+@app.callback(
     Output("progress", "value"),
     Output("progress", "label"),
     Output("progress-poller", "disabled"), # required otherwise no update
@@ -414,6 +553,95 @@ def toggle_network_visibility(selected):
     if 'network' in selected:
         return dict(style=dict(color=color_network, weight=1, opacity=0.6))
     return dict(style=dict(color=color_network, weight=1, opacity=0))
+
+@app.callback(
+    Output("layer-selected-segments", "children"),
+    Input("table-segments-agg", "selected_rows"),
+    State("table-segments-agg", "data"),
+    State("geojson-store-filtered", "data"),
+)
+def highlight_selected_segments(selected_rows, table_data, filtered_data):
+    """Highlight selected segments on the map.
+
+    Filters the segment GeoDataFrame by the selected rows from the
+    aggregated table and returns a GeoJSON layer with highlighted
+    geometry.
+
+    Args:
+        selected_rows (list[int]): Indices of selected rows in the segments table.
+        table_data (list[dict]): Data from the aggregated segments table.
+        filtered_data (dict): Filtered GeoJSON data containing segments.
+
+    Returns:
+        dl.GeoJSON or None: Highlighted GeoJSON layer if matches are found,
+        otherwise None.
+    """
+    if not selected_rows or not filtered_data or "segments" not in filtered_data:
+        return None
+
+    # Get all selected 'ref' values
+    ref_values = [table_data[i]["ref"] for i in selected_rows]
+
+    # Convert filtered segments to GeoDataFrame
+    gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
+
+    # Filter for the selected segments
+    selected_geom = gdf_seg[gdf_seg["ref"].isin(ref_values)]
+
+    if selected_geom.empty:
+        return None
+
+    # Return GeoJSON layer for all selected segments
+    return dl.GeoJSON(
+        data=selected_geom.__geo_interface__,
+        options=dict(style=dict(color="red", weight=6)),
+        children=[dl.Tooltip(content="This is a <b>selected segment</b>")]  # tooltip appears on hover
+    )
+
+@app.callback(
+    Output("layer-selected-nodes", "children"),
+    Input("table-nodes-agg", "selected_rows"),
+    State("table-nodes-agg", "data"),
+    State("geojson-store-filtered", "data"),
+)
+def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
+    """Highlight segments connected to selected nodes on the map.
+
+    Uses selected node IDs from the aggregated nodes table to filter
+    segments where either endpoint matches, then returns a GeoJSON
+    layer with highlighted geometry.
+
+    Args:
+        selected_node_rows (list[int]): Indices of selected rows in the nodes table.
+        node_data (list[dict]): Data from the aggregated nodes table.
+        filtered_data (dict): Filtered GeoJSON data containing segments.
+
+    Returns:
+        dl.GeoJSON or None: Highlighted GeoJSON layer if matching segments exist,
+        otherwise None.
+    """
+    if not selected_node_rows or not filtered_data or "segments" not in filtered_data:
+        return None  # nothing selected
+
+    # Get selected node IDs or refs
+    selected_nodes = [node_data[i]["rcn_ref"] for i in selected_node_rows]
+
+    # Convert filtered segments to GeoDataFrame
+    gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
+
+    # Filter segments where node_from or node_to is in selected_nodes
+    mask = gdf_seg["node_from"].isin(selected_nodes) | gdf_seg["node_to"].isin(selected_nodes)
+    gdf_highlight = gdf_seg[mask]
+
+    if gdf_highlight.empty:
+        return None
+
+    # Return GeoJSON layer with light blue highlight
+    return dl.GeoJSON(
+        data=gdf_highlight.__geo_interface__,
+        options=dict(style=dict(color="lightblue", weight=5)),
+        children=[dl.Tooltip("Segment connected to selected node(s)")]
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
