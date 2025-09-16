@@ -14,7 +14,7 @@ import base64
 import datetime
 import xml.etree.ElementTree as ET
 from shapely.geometry import LineString, MultiLineString
-from dash import html, dcc, Output, Input, State
+from dash import html, dcc, Output, Input, State, dash_table
 from dash.exceptions import PreventUpdate
 
 # ---------- Constants ----------
@@ -28,16 +28,18 @@ intersect_threshold = 0.75
 
 # application
 progress_state = {
-    "pct": 0, 
-    "done": False, 
+    "pct": 0,
+    "processed-file": "",
     "btn-process-disabled": False,
     "btn-download-disabled": False
 }
 network_geojson = 'data/intermediate/gdf_multiline_simplified.geojson'
 color_match = '#f39c12'
 color_network = '#7f8c8d'
+color_processing = '#343a40'
 min_zoom_points = 11
 initial_center =  [50.84606, 4.35213]
 initial_zoom = 10
 date_picker_min_date = datetime.date(2010, 1, 1)
 date_picker_max_date = datetime.date.today()
+zoom_buffer = 0.001  # degrees

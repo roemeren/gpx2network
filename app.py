@@ -58,7 +58,17 @@ app.layout = dbc.Container(
                     html.Div(id="browse-info"),
                     dbc.Button("Process ZIP", id="btn-process", color="primary", className="mb-2", disabled=True),
                     dbc.Progress(id="progress", value=0, striped=True, animated=True, className="mb-2"),
-                    html.Div(id="process-status"),
+                    html.Div(
+                        id="processing-status",
+                        style={
+                            "padding": "5px 10px",
+                            "borderRadius": "5px",
+                            "fontFamily": "monospace",
+                            "color": color_processing,
+                            "fontSize": "0.95rem"
+                        }
+                    ),
+                    html.Div(id="load-status"),
                     html.Div(
                         dbc.Button(
                             "Download Results",
@@ -270,7 +280,7 @@ def save_uploaded_file(contents, filename):
     return {"status": "done"}
 
 @app.callback(
-    Output("process-status", "children"),
+    Output("load-status", "children"),
     Output("geojson-store-full", "data"),
     Output("download-container", "children"),
     Input("btn-process", "n_clicks"),
@@ -330,9 +340,10 @@ def process_zip(n_clicks, filename):
     progress_state["btn-process-disabled"] = False
     progress_state["btn-download-disabled"] = False
     progress_state["pct"] = 0
+    progress_state["processed-file"] = ""
 
     return (
-        f"Finished processing {filename}",
+        f"Currently loaded into app: {filename}",
         {
             "segments": geojson_lines, 
             "nodes": geojson_points,
@@ -511,17 +522,26 @@ def update_aggregated_tables(filtered_data):
     Output("progress", "value"),
     Output("progress", "label"),
     Output("progress-poller", "disabled"), # required otherwise no update
+    Output("processing-status", "children"),
     Output("btn-process", "disabled"),
     Output("btn-download", "disabled"),
     Input("progress-poller", "n_intervals")
 )
 def update_progress(_):
     pct = progress_state.get("pct", 0)
-    done = progress_state.get("done", False)
+    done = False # TODO: implement temporary activation/deactivation of poller
+    processed_file = progress_state.get("processed-file", "")
     label = f"{pct}%" if pct >= 5 else ""
     btn_disabled = progress_state.get("btn-process-disabled", False)
     btn_download_disabled = progress_state.get("btn-download-disabled", False)
-    return pct, label, done, btn_disabled, btn_download_disabled
+    return (
+        pct, 
+        label, 
+        done, 
+        processed_file, 
+        btn_disabled, 
+        btn_download_disabled
+    )
 
 @app.callback(
     Output("browse-info", "children"),
@@ -529,7 +549,7 @@ def update_progress(_):
     State('upload-zip', 'filename')
 )
 def show_info(c, f):
-    return f"File name: {f}"
+    return f"Selected file: {f}"
 
 @app.callback(
     Output('geojson-network', 'options'),

@@ -61,7 +61,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
 
     # Skip further processing if no activity date (not a recorded activity)
     if gpx_time is None:
-        print("\tWarning: no timestamps found → GPX is not a recorded activity, skipping.")
+        print(f"Warning ({gpx_name}): no timestamps found → GPX is not a recorded activity, skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()
 
     # Step 2: Buffer GPX track and find intersections with bike network
@@ -72,7 +72,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     
     # Exit the function if no segments are matched
     if bike_segments_matched.empty:
-        print("\tWarning: no bike network segments intersect the GPX track, skipping.")
+        print(f"Warning ({gpx_name}): no bike network segments intersect the GPX track, skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
     
     # Inner function to calculate overlap (apply faster than for loop)
@@ -89,7 +89,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
 
     # Exit the function if there are no segments with sufficient overlap
     if filtered_segments.empty:
-        print(f"\tWarning: matched segments found, but none exceeded the overlap threshold ({intersect_threshold:.0%}), skipping.")
+        print(f"Warning ({gpx_name}): matched segments found, but none exceeded the overlap threshold ({intersect_threshold:.0%}), skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
 
     # Step 4: Extract unique nodes from the matched segments
@@ -135,6 +135,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
             GeoDataFrame: Combined bike network segments matched with all GPX tracks.
             GeoDataFrame: Combined matched bike nodes corresponding to the segments.
     """
+    print("Processing zip file...")
     # Ensure target folder is empty
     zip_folder = os.path.join(UPLOAD_FOLDER, "unzipped_gpx")
     if os.path.exists(zip_folder):
@@ -155,11 +156,11 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
 
     for i, gpx_file in enumerate(gpx_files, start=1):
         if gpx_file.endswith(".gpx"):
+            progress_state["processed-file"] = f"Processing: {gpx_file}"
 
             gpx_file_path = os.path.join(zip_folder, gpx_file)
 
             # Process each GPX file
-            print("Processing file: " + gpx_file_path)
             bike_segments, matched_nodes = process_gpx_file(gpx_file_path, bike_network, point_geodf)
 
             # Append results to the combined GeoDataFrames
