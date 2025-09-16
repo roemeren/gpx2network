@@ -216,9 +216,12 @@ def process_zip(n_clicks, filename):
     geojson_points = all_nodes_wgs84.__geo_interface__
 
     # Compute KPIs using projected coordinates
-    total_segments = len(all_segments)
-    total_nodes = len(all_nodes)
-    total_length = round(all_segments.length.sum()/1000, 2)
+    total_segments = all_segments["osm_id"].nunique()
+    total_nodes = all_nodes["osm_id"].nunique()
+    total_length = (round(
+        all_segments.drop_duplicates("osm_id")
+        .geometry.length.sum()/1000, 2)
+    )
 
     # Re-enable button
     progress_state["btn-process-disabled"] = False
