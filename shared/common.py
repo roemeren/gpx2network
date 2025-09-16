@@ -11,9 +11,9 @@ import dash_leaflet as dl
 import zipfile, io, time, json
 import gpxpy
 import base64
+import datetime
 import xml.etree.ElementTree as ET
 from shapely.geometry import LineString, MultiLineString
-from datetime import datetime
 from dash import html, dcc, Output, Input, State
 from dash.exceptions import PreventUpdate
 
@@ -39,3 +39,5 @@ color_network = '#7f8c8d'
 min_zoom_points = 11
 initial_center =  [50.84606, 4.35213]
 initial_zoom = 10
+date_picker_min_date = datetime.date(2010, 1, 1)
+date_picker_max_date = datetime.date.today()

@@ -20,6 +20,7 @@ with open(network_geojson , "r") as f:
 with open(pickle_paths["gdf_point_projected.geojson"], "rb") as f:
     point_geodf = pickle.load(f)
 
+# Other initialization
 geojson_points = {}
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -73,6 +74,7 @@ app.layout = dbc.Container(
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=500, disabled=True),
                     dcc.Store(id="dummy-store"),
+                    # store matched segments and nodes
                     dcc.Store(id="geojson-store", data={})
                 ],
                 width=3
@@ -96,13 +98,50 @@ app.layout = dbc.Container(
                             html.H2(id="kpi-totlength", children="–")
                         ])), width=4),
                     ], className="mb-3"),
-                    dcc.Checklist(
-                        id="toggle-network",
-                        options=[{"label": "Show Network", "value": "network"}],
-                        value=[],
-                        inline=True,
-                        style={"marginLeft": "20px"}
-                    ),
+                    # Controls row
+                    dbc.Row([
+                        dbc.Col(
+                            dcc.Checklist(
+                                id="toggle-network",
+                                options=[{"label": "Show Network", "value": "network"}],
+                                value=[],
+                                inline=True,
+                                style={"marginLeft": "0px", "height": "100%"}
+                            ),
+                            width="auto",
+                            style={"display": "flex", "alignItems": "center"}
+                        ),
+                        dbc.Col(
+                            html.Div([
+                                dbc.Label("Start Date", html_for="start-date-picker"),
+                                dcc.DatePickerSingle(
+                                    id="start-date-picker",
+                                    date=date_picker_min_date,
+                                    display_format="DD/MM/YYYY",
+                                    month_format="MMMM YYYY",
+                                    style={"height": "40px", "zIndex": 9999, "position": "relative"}
+                                )
+                            ]),
+                            width="auto",
+                            # zIndex and position ensure the calendar popup is on top of the map
+                            style={"marginLeft": "20px", "height": "40px", "zIndex": 9999, "position": "relative"}
+                        ),
+                        dbc.Col(
+                            html.Div([
+                                dbc.Label("End Date ", html_for="end-date-picker"),
+                                dcc.DatePickerSingle(
+                                    id="end-date-picker",
+                                    date=date_picker_max_date,
+                                    display_format="DD/MM/YYYY",
+                                    month_format="MMMM YYYY",
+                                    style={"height": "40px", "zIndex": 9999, "position": "relative"}
+                                )
+                            ]),
+                            width="auto",
+                            # zIndex and position ensure the calendar popup is on top of the map
+                            style={"marginLeft": "20px", "height": "40px", "zIndex": 9999, "position": "relative"}
+                        ),
+                    ], className="mb-2", align="center"),
                     # Map
                     dl.Map(
                         center=initial_center, 
@@ -120,9 +159,9 @@ app.layout = dbc.Container(
                                 options=dict(style=dict(color=color_network, weight=1, opacity=0))
                             ),
                             # Matched segments layer (drawn on top of network)
-                            dl.LayerGroup(id="geojson-lines"),                     
+                            dl.LayerGroup(id="layer-group-segments"),                     
                             # Matched nodes layer (initially hidden)
-                            dl.LayerGroup(id="layer-group-points", children=[])
+                            dl.LayerGroup(id="layer-group-nodes", children=[])
                         ],
                         id="map"
                     ),
@@ -158,12 +197,8 @@ def save_uploaded_file(contents, filename):
 
 @app.callback(
     Output("process-status", "children"),
-    Output("geojson-lines", "children"),
     Output("geojson-store", "data"),
     Output("download-container", "children"),
-    Output("kpi-totsegments", "children"),
-    Output("kpi-totnodes", "children"),
-    Output("kpi-totlength", "children"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
     prevent_initial_call=True
@@ -184,22 +219,24 @@ def process_zip(n_clicks, filename):
     # Call geoprocessing function
     all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network,
                                               point_geodf)
+    
+    # Add segment lengths in km
+    all_segments["length_km"] = all_segments.geometry.length / 1000.0
 
     # Convert back to WGS84 for mapping
-    if not all_segments.empty and not all_nodes.empty:
-        all_segments_wgs84 = all_segments.to_crs(epsg=4326)
-        all_nodes_wgs84 = all_nodes.to_crs(epsg=4326)
+    all_segments = all_segments.to_crs(epsg=4326) if not all_segments.empty else gpd.GeoDataFrame()
+    all_nodes = all_nodes.to_crs(epsg=4326) if not all_nodes.empty else gpd.GeoDataFrame()
 
     # Save WGS84 results as GeoJSON for further use
     segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments_wgs84.geojson")
     nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes_wgs84.geojson")
-    all_segments_wgs84.to_file(segments_file_path, driver="GeoJSON")
-    all_nodes_wgs84.to_file(nodes_file_path, driver="GeoJSON")
+    all_segments.to_file(segments_file_path, driver="GeoJSON")
+    all_nodes.to_file(nodes_file_path, driver="GeoJSON")
 
-    # Create zip of results ---
+    # Create zip of results
     results_zip = create_result_zip(segments_file_path, nodes_file_path)
 
-    # Build a download link (served from /static if RES_FOLDER is inside it)
+    # Build a download link
     rel_path = os.path.relpath(results_zip, start="static")
     download_link = dbc.Button(
         "Download Results",
@@ -212,16 +249,8 @@ def process_zip(n_clicks, filename):
     )
 
     # Read files for mapping
-    geojson_lines = all_segments_wgs84.__geo_interface__
-    geojson_points = all_nodes_wgs84.__geo_interface__
-
-    # Compute KPIs using projected coordinates
-    total_segments = all_segments["osm_id"].nunique()
-    total_nodes = all_nodes["osm_id"].nunique()
-    total_length = (round(
-        all_segments.drop_duplicates("osm_id")
-        .geometry.length.sum()/1000, 2)
-    )
+    geojson_lines = all_segments.__geo_interface__
+    geojson_points = all_nodes.__geo_interface__
 
     # Re-enable button
     progress_state["btn-process-disabled"] = False
@@ -229,17 +258,86 @@ def process_zip(n_clicks, filename):
 
     return (
         f"Finished processing {filename}",
+        {
+            "segments": geojson_lines, 
+            "nodes": geojson_points,
+        },
+        download_link
+    )
+
+@app.callback(
+    Output("kpi-totsegments", "children"),
+    Output("kpi-totnodes", "children"),
+    Output("kpi-totlength", "children"),
+    Output("layer-group-segments", "children"),
+    Output("layer-group-nodes", "children"),
+    Input("geojson-store", "data"),
+    Input("start-date-picker", "date"),
+    Input("end-date-picker", "date"),
+    Input("map", "zoom")
+)
+def update_kpis(store, start_date, end_date, zoom):
+    if not store: return None, None, None, None, None
+    
+    # Load segments GeoDataFrame from stored GeoJSON
+    gdf_segments = gpd.GeoDataFrame.from_features(store["segments"]["features"])
+    gdf_nodes = gpd.GeoDataFrame.from_features(store["nodes"]["features"])
+
+    # Convert gpx_date from str to date
+    gdf_segments["gpx_date"] = pd.to_datetime(gdf_segments["gpx_date"], format="%Y-%m-%d").dt.date
+    gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"], format="%Y-%m-%d").dt.date
+
+    print(gdf_segments.info())
+
+    # Safely parse start/end dates from pickers to datetime
+    try:
+        start = (
+            pd.to_datetime(start_date).date()
+            if start_date
+            else gdf_segments["gpx_date"].min().date()
+        )
+        end = (
+            pd.to_datetime(end_date).date()
+            if end_date
+            else gdf_segments["gpx_date"].max().date()
+        )
+    except Exception:
+        # Exit callback early if user is still typing / invalid input
+        return None, None, None, None, None
+
+    # Filter by date range
+    mask = (gdf_segments["gpx_date"] >= start) & (gdf_segments["gpx_date"] <= end)
+    gdf_segments_filtered = gdf_segments.loc[mask]
+    mask = (gdf_nodes["gpx_date"] >= start) & (gdf_nodes["gpx_date"] <= end)
+    gdf_nodes_filtered = gdf_nodes.loc[mask]
+
+    # Recompute KPIs
+    total_segments = gdf_segments_filtered["osm_id"].nunique()
+    total_nodes = gdf_nodes_filtered["osm_id"].nunique()
+    total_length = round(
+        gdf_segments_filtered.drop_duplicates("osm_id")["length_km"].sum(), 2
+    )
+    print(f"Length filtered segments: {len(gdf_segments_filtered)}")
+
+    if zoom >= min_zoom_points:
+        res_points = dl.GeoJSON(
+            data=gdf_nodes_filtered.__geo_interface__,
+            children=[dl.Tooltip(content="This is a <b>bike node</b>")]
+        )
+    else:
+        res_points = None
+
+    return (
+        total_segments, 
+        total_nodes, 
+        total_length,
         dl.GeoJSON(
-            data=geojson_lines, 
+            data=gdf_segments_filtered.__geo_interface__, 
             id='geojson-seg',
             options=dict(style=dict(color=color_match, weight=5)),
             children=[dl.Tooltip(content="This is a <b>matched segment<b/>")]
         ),
-        geojson_points,
-        download_link,
-        total_segments,
-        total_nodes,
-        total_length
+        res_points
     )
 
 @app.callback(
@@ -288,32 +386,6 @@ def toggle_network_visibility(selected):
     if 'network' in selected:
         return dict(style=dict(color=color_network, weight=1, opacity=0.6))
     return dict(style=dict(color=color_network, weight=1, opacity=0))
-
-@app.callback(
-    Output('layer-group-points', 'children'),
-    Input("map", "zoom"),
-    Input("geojson-store", "data")
-)
-def update_point_layer(zoom, points):
-    """
-    Display matched bike-node points when zoomed in.
-
-    Args:
-        zoom (int): Current map zoom level.
-        points (dict): GeoJSON points data from the geojson-store.
-
-    Returns:
-        list: dl.GeoJSON layer(s) if zoom ≥ min_zoom_points, else [].
-    """
-    children = []
-    if zoom >= min_zoom_points:
-        children.append(
-            dl.GeoJSON(
-                data=points,
-                children=[dl.Tooltip(content="This is a <b>bike node</b>")]
-            )
-        )
-    return children
 
 if __name__ == '__main__':
     app.run(debug=True)
