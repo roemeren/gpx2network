@@ -603,24 +603,20 @@ def toggle_network_visibility(selected):
 @app.callback(
     Output("map", "center"),
     Output("map", "zoom"),
+    Output("map", "key"),  # Force the map to fully re-render
     Input("reset-map-btn", "n_clicks"),
-    # Include current center and zoom as State to ensure callback triggers correctly
-    State("map", "center"),
-    State("map", "zoom"),
     prevent_initial_call=True
 )
-def reset_map(n_clicks, current_center, current_zoom):
-    """Reset the map to its initial center and zoom level.
+def reset_map(n_clicks):
+    """Recenter the map to its initial center and zoom level.
 
     Args:
-        n_clicks (int): Number of times the reset button was clicked.
-        current_center (list): Current map center [lat, lon].
-        current_zoom (int): Current map zoom level.
+        n_clicks (int): Number of times the recenter button was clicked.
 
     Returns:
-        list, int: Default center coordinates [lat, lon] and zoom level.
+        list, int, str: Default center [lat, lon], default zoom, and updated key.
     """
-    return initial_center, initial_zoom
+    return initial_center, initial_zoom, f"map-{n_clicks}"
 
 @app.callback(
     Output("layer-selected-segments", "children"),
