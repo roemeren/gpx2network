@@ -113,6 +113,11 @@ app.layout = dbc.Container(
                     # Controls row
                     dbc.Row([
                         dbc.Col(
+                            dbc.Button("Recenter Map", id="reset-map-btn", color="secondary", style={"marginLeft": "20px"}),
+                            width="auto",
+                            style={"display": "flex", "alignItems": "center"}
+                        ),
+                        dbc.Col(
                             dcc.Checklist(
                                 id="toggle-network",
                                 options=[{"label": "Show Network", "value": "network"}],
@@ -594,6 +599,28 @@ def toggle_network_visibility(selected):
     if 'network' in selected:
         return dict(style=dict(color=color_network, weight=1, opacity=0.6))
     return dict(style=dict(color=color_network, weight=1, opacity=0))
+
+@app.callback(
+    Output("map", "center"),
+    Output("map", "zoom"),
+    Input("reset-map-btn", "n_clicks"),
+    # Include current center and zoom as State to ensure callback triggers correctly
+    State("map", "center"),
+    State("map", "zoom"),
+    prevent_initial_call=True
+)
+def reset_map(n_clicks, current_center, current_zoom):
+    """Reset the map to its initial center and zoom level.
+
+    Args:
+        n_clicks (int): Number of times the reset button was clicked.
+        current_center (list): Current map center [lat, lon].
+        current_zoom (int): Current map zoom level.
+
+    Returns:
+        list, int: Default center coordinates [lat, lon] and zoom level.
+    """
+    return initial_center, initial_zoom
 
 @app.callback(
     Output("layer-selected-segments", "children"),
