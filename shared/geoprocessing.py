@@ -7,7 +7,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     This function reads a GPX file, converts its tracks into geometries, 
     buffers them, and intersects with a given bike network to identify 
     matching segments. It also filters bike nodes corresponding to 
-    matched segments.
+    matched segments and stores the unique OSM node IDs for each segment.
 
     Args:
         gpx_file_path (str): Path to the GPX file.
@@ -17,7 +17,8 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     Returns:
         tuple:
             GeoDataFrame: Filtered bike network segments matched with the GPX track, 
-                          including 'gpx_name' and 'gpx_date'.
+                          including 'gpx_name', 'gpx_date', and the unique node 
+                          identifiers 'osm_id_from' and 'osm_id_to'.
             GeoDataFrame: Matched bike nodes corresponding to the segments, 
                           including 'gpx_name' and 'gpx_date'.
     """
@@ -45,7 +46,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
         # Just a LineString if there's only one segment
         multi_line = line_segments[0]
     
-    #Create a GeoDataFrame in EPSG:4326 (WGS 84)
+    # Create a GeoDataFrame in EPSG:4326 (WGS 84)
     gdf = gpd.GeoDataFrame(geometry=[multi_line], crs="EPSG:4326")
 
     # Reproject to Belgian Lambert 2008
@@ -65,17 +66,15 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()
 
     # Step 2: Buffer GPX track and find intersections with bike network
-    # note: copy and assign needed in order to avoid SettingWithCopyWarning
     buffered_gpx = gdf_gpx.copy()
     buffered_gpx['geometry'] = buffered_gpx['geometry'].buffer(buffer_distance)
     bike_segments_matched = bike_network[bike_network.intersects(buffered_gpx.geometry.iloc[0])]
     
-    # Exit the function if no segments are matched
     if bike_segments_matched.empty:
         print(f"Warning ({gpx_name}): no bike network segments intersect the GPX track, skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
     
-    # Inner function to calculate overlap (apply faster than for loop)
+    # Inner function to calculate overlap
     def calculate_overlap(segment):
         intersection = segment.geometry.intersection(buffered_gpx.geometry.iloc[0])
         return intersection.length / segment.geometry.length
@@ -87,7 +86,6 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     filtered_segments = bike_segments_matched[bike_segments_matched['overlap_percentage'] 
                                               >= intersect_threshold]
 
-    # Exit the function if there are no segments with sufficient overlap
     if filtered_segments.empty:
         print(f"Warning ({gpx_name}): matched segments found, but none exceeded the overlap threshold ({intersect_threshold:.0%}), skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
@@ -109,11 +107,43 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     matched_nodes_all = point_geodf_filtered.loc[intersecting_indices]
     matched_nodes = matched_nodes_all[matched_nodes_all['rcn_ref'].isin(unique_nodes)]
 
-    # Return matched segments and matched nodes with GPX metadata
+    # Step 6: Add OSM node IDs for the matched segment endpoints (minimum osm_id)
+    osm_from = []
+    osm_to = []
+    for _, seg in filtered_segments.iterrows():
+        from_match = matched_nodes[matched_nodes['rcn_ref'] == seg['node_from']]
+        to_match = matched_nodes[matched_nodes['rcn_ref'] == seg['node_to']]
+
+        if from_match.empty:
+            print(f"Warning ({gpx_name}): no matched node found for node_from '{seg['node_from']}' in segment {seg['ref']}")
+            osm_from.append(None)
+        else:
+            osm_from.append(from_match.loc[from_match['osm_id'].idxmin(), 'osm_id'])
+        
+        if to_match.empty:
+            print(f"Warning ({gpx_name}): no matched node found for node_to '{seg['node_to']}' in segment {seg['ref']}")
+            osm_to.append(None)
+        else:
+            osm_to.append(to_match.loc[to_match['osm_id'].idxmin(), 'osm_id'])
+
+    filtered_segments = filtered_segments.assign(osm_id_from=osm_from,
+                                                 osm_id_to=osm_to)
+
+    # Step 7: Add GPX metadata
     filtered_segments["gpx_name"] = gpx_name
     filtered_segments["gpx_date"] = gpx_time
     matched_nodes = matched_nodes.assign(gpx_name=gpx_name)
     matched_nodes = matched_nodes.assign(gpx_date=gpx_time)
+
+    # Step 8: Filter matched_nodes to only those actually used in this GPX file
+    used_nodes = pd.concat([
+        filtered_segments[['gpx_name', 'osm_id_from']].rename(columns={'osm_id_from': 'osm_id'}),
+        filtered_segments[['gpx_name', 'osm_id_to']].rename(columns={'osm_id_to': 'osm_id'})
+    ]).dropna()
+
+    matched_nodes = matched_nodes.merge(used_nodes, 
+                                        left_on=['gpx_name', 'osm_id'], 
+                                        right_on=['gpx_name', 'osm_id'])
 
     return filtered_segments, matched_nodes
 
@@ -172,6 +202,14 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
             progress_state["pct"] = pct
     
     print("Processing done!")
+
+    # Temporary print: show all segments where osm_id_from or osm_id_to is None
+    null_osm_rows = all_segments[
+        all_segments['osm_id_from'].isnull() | all_segments['osm_id_to'].isnull()
+    ]
+    if not null_osm_rows.empty:
+        print(f"\nOVERVIEW: Segments with missing OSM IDs:")
+        print(null_osm_rows[['gpx_name', 'gpx_date', 'ref', 'node_from', 'node_to', 'osm_id_from', 'osm_id_to']])
 
     return all_segments, all_nodes
 

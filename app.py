@@ -480,7 +480,7 @@ def update_aggregated_tables(filtered_data):
         gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
         # Ensure correct types
         gdf_seg["gpx_date"] = pd.to_datetime(gdf_seg["gpx_date"])
-        agg_seg = gdf_seg.groupby("ref").agg(
+        agg_seg = gdf_seg.groupby((["ref", "osm_id"])).agg(
             length_km=("length_km", "max"),
             count_gpx=("gpx_name", "nunique"),
             max_overlap_percentage=("overlap_percentage", "max"),
@@ -503,14 +503,15 @@ def update_aggregated_tables(filtered_data):
     if "nodes" in filtered_data and filtered_data["nodes"]["features"]:
         gdf_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
         gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
-        agg_nodes = gdf_nodes.groupby("rcn_ref").agg(
+        agg_nodes = gdf_nodes.groupby(["rcn_ref", "osm_id"]).agg(
             count_gpx=("gpx_date", "nunique"),
             first_date=("gpx_date", "min"),
             last_date=("gpx_date", "max")
         ).reset_index()
-        # Apply formatting
+        # Sort & apply formatting
         agg_nodes["first_date"] = agg_nodes["first_date"].dt.strftime("%Y-%m-%d")
         agg_nodes["last_date"] = agg_nodes["last_date"].dt.strftime("%Y-%m-%d")
+        agg_nodes = agg_nodes.sort_values("count_gpx", ascending=False)
         node_columns = [{"name": c, "id": c} for c in agg_nodes.columns]
         node_data = agg_nodes.to_dict("records")
     else:
@@ -600,13 +601,13 @@ def highlight_selected_segments(selected_rows, table_data, filtered_data):
         return None
 
     # Get all selected 'ref' values
-    ref_values = [table_data[i]["ref"] for i in selected_rows]
+    ref_values = [table_data[i]["osm_id"] for i in selected_rows]
 
     # Convert filtered segments to GeoDataFrame
     gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
 
     # Filter for the selected segments
-    selected_geom = gdf_seg[gdf_seg["ref"].isin(ref_values)]
+    selected_geom = gdf_seg[gdf_seg["osm_id"].isin(ref_values)]
 
     if selected_geom.empty:
         return None
@@ -614,7 +615,7 @@ def highlight_selected_segments(selected_rows, table_data, filtered_data):
     # Return GeoJSON layer for all selected segments
     return dl.GeoJSON(
         data=selected_geom.__geo_interface__,
-        options=dict(style=dict(color="red", weight=6)),
+        options=dict(style=dict(color=color_highlight_segment, weight=6)),
         children=[dl.Tooltip(content="This is a <b>selected segment</b>")]  # tooltip appears on hover
     )
 
@@ -644,13 +645,13 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
         return None  # nothing selected
 
     # Get selected node IDs or refs
-    selected_nodes = [node_data[i]["rcn_ref"] for i in selected_node_rows]
+    selected_nodes = [node_data[i]["osm_id"] for i in selected_node_rows]
 
     # Convert filtered segments to GeoDataFrame
     gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
 
     # Filter segments where node_from or node_to is in selected_nodes
-    mask = gdf_seg["node_from"].isin(selected_nodes) | gdf_seg["node_to"].isin(selected_nodes)
+    mask = gdf_seg["osm_id_from"].isin(selected_nodes) | gdf_seg["osm_id_to"].isin(selected_nodes)
     gdf_highlight = gdf_seg[mask]
 
     if gdf_highlight.empty:
@@ -659,7 +660,7 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     # Return GeoJSON layer with light blue highlight
     return dl.GeoJSON(
         data=gdf_highlight.__geo_interface__,
-        options=dict(style=dict(color="lightblue", weight=5)),
+        options=dict(style=dict(color=color_highlight_node, weight=5)),
         children=[dl.Tooltip("Segment connected to selected node(s)")]
     )
 
