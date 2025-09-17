@@ -140,7 +140,7 @@ app.layout = dbc.Container(
                         ),
                         dbc.Col(
                             html.Div([
-                                dbc.Label("End Date ", html_for="end-date-picker"),
+                                dbc.Label("End Date", html_for="end-date-picker"),
                                 dcc.DatePickerSingle(
                                     id="end-date-picker",
                                     date=date_picker_max_date,
@@ -149,9 +149,24 @@ app.layout = dbc.Container(
                                     style={"height": "40px", "zIndex": 9999, "position": "relative"}
                                 )
                             ]),
-                            width="auto",
+                            width="3",
                             # zIndex and position ensure the calendar popup is on top of the map
                             style={"marginLeft": "20px", "height": "40px", "zIndex": 9999, "position": "relative"}
+                        ),
+                        dbc.Col(
+                            html.Div([
+                                dbc.Label("Cluster Radius", html_for="cluster-radius-slider"),
+                                dcc.Slider(
+                                    id="cluster-radius-slider",
+                                    min=20,
+                                    max=300,
+                                    step=10,
+                                    value=100,
+                                    marks={i: str(i) for i in range(20, 301, 50)},
+                                    tooltip={"always_visible": True}
+                                )
+                            ]),
+                            width="3"
                         )
                     ], className="mb-2", align="center"),
                     # Map
@@ -435,9 +450,10 @@ def update_segments(filtered_data):
 
 @app.callback(
     Output("layer-nodes", "children"),
-    Input("geojson-store-filtered", "data")
+    Input("geojson-store-filtered", "data"),
+    Input("cluster-radius-slider", "value"),
 )
-def update_nodes(filtered_data):
+def update_nodes(filtered_data, cluster_radius):
     """Render bike nodes
 
     Args:
@@ -453,7 +469,7 @@ def update_nodes(filtered_data):
             data=filtered_data["nodes_unique"],
             cluster=True,
             zoomToBoundsOnClick=True,
-            superClusterOptions={"radius": 150}
+            superClusterOptions={"radius": cluster_radius}
         )
 
 @app.callback(
