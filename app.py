@@ -426,8 +426,7 @@ def update_segments(filtered_data):
     return dl.GeoJSON(
         data=filtered_data["segments"],
         id="geojson-seg",
-        options=dict(style=dict(color=color_match, weight=5)),
-        children=[dl.Tooltip(content="This is a <b>matched segment</b>")],
+        options=dict(style=dict(color=color_match, weight=5))
     )
 
 @app.callback(
@@ -448,8 +447,7 @@ def update_nodes(filtered_data, zoom):
     if not filtered_data or zoom < min_zoom_points:
         return None
     return dl.GeoJSON(
-        data=filtered_data["nodes"],
-        children=[dl.Tooltip(content="This is a <b>bike node</b>")],
+        data=filtered_data["nodes"]
     )
 
 @app.callback(
@@ -615,8 +613,7 @@ def highlight_selected_segments(selected_rows, table_data, filtered_data):
     # Return GeoJSON layer for all selected segments
     return dl.GeoJSON(
         data=selected_geom.__geo_interface__,
-        options=dict(style=dict(color=color_highlight_segment, weight=6)),
-        children=[dl.Tooltip(content="This is a <b>selected segment</b>")]  # tooltip appears on hover
+        options=dict(style=dict(color=color_highlight_segment, weight=6))
     )
 
 @app.callback(
@@ -657,11 +654,10 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     if gdf_highlight.empty:
         return None
 
-    # Return GeoJSON layer with light blue highlight
+    # Return GeoJSON layer with blue highlight
     return dl.GeoJSON(
         data=gdf_highlight.__geo_interface__,
-        options=dict(style=dict(color=color_highlight_node, weight=5)),
-        children=[dl.Tooltip("Segment connected to selected node(s)")]
+        options=dict(style=dict(color=color_highlight_node, weight=5))
     )
 
 if __name__ == '__main__':

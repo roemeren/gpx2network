@@ -44,4 +44,3 @@ initial_center =  [50.84606, 4.35213]
 initial_zoom = 10
 date_picker_min_date = datetime.date(2010, 1, 1)
 date_picker_max_date = datetime.date.today()
-zoom_buffer = 0.001  # degrees

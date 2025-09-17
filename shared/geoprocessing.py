@@ -132,9 +132,11 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     # Step 7: Add GPX metadata
     filtered_segments["gpx_name"] = gpx_name
     filtered_segments["gpx_date"] = gpx_time
-    matched_nodes = matched_nodes.assign(gpx_name=gpx_name)
-    matched_nodes = matched_nodes.assign(gpx_date=gpx_time)
-
+    filtered_segments["tooltip"] = "segment " + filtered_segments["ref"]
+    matched_nodes["gpx_name"] = gpx_name
+    matched_nodes["gpx_date"] = gpx_time
+    matched_nodes["tooltip"] = "node " + matched_nodes["rcn_ref"]
+    
     # Step 8: Filter matched_nodes to only those actually used in this GPX file
     used_nodes = pd.concat([
         filtered_segments[['gpx_name', 'osm_id_from']].rename(columns={'osm_id_from': 'osm_id'}),
