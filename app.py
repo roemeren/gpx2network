@@ -98,15 +98,15 @@ app.layout = dbc.Container(
                     # KPI row
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H5("No. Segments"),
-                            html.H2(id="kpi-totsegments", children="–")
-                        ])), width=4),
-                        dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H5("No. Nodes"),
+                            html.H5("No. Matched Nodes"),
                             html.H2(id="kpi-totnodes", children="–")
                         ])), width=4),
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H5("Total Length (km)"),
+                            html.H5("No. Matched Segments"),
+                            html.H2(id="kpi-totsegments", children="–")
+                        ])), width=4),
+                        dbc.Col(dbc.Card(dbc.CardBody([
+                            html.H5("Total Segment Length (km)"),
                             html.H2(id="kpi-totlength", children="–")
                         ])), width=4),
                     ], className="mb-3"),
@@ -398,6 +398,9 @@ def filter_data(store, start_date, end_date):
         gdf_segments_filtered.drop_duplicates("osm_id")["length_km"].sum(), 2
     )
 
+    # Keep small version of nodes layer for mapping
+    gdf_nodes_unique = gdf_nodes_filtered[["osm_id", "rcn_ref", "tooltip", "geometry"]].drop_duplicates()
+
     return (
         total_segments,
         total_nodes,
@@ -405,6 +408,7 @@ def filter_data(store, start_date, end_date):
         {
             "segments": gdf_segments_filtered.__geo_interface__,
             "nodes": gdf_nodes_filtered.__geo_interface__,
+            "nodes_unique": gdf_nodes_unique.__geo_interface__
         }
     )
 
@@ -431,24 +435,26 @@ def update_segments(filtered_data):
 
 @app.callback(
     Output("layer-nodes", "children"),
-    Input("geojson-store-filtered", "data"),
-    Input("map", "zoom"),
+    Input("geojson-store-filtered", "data")
 )
-def update_nodes(filtered_data, zoom):
-    """Render bike nodes depending on map zoom level.
+def update_nodes(filtered_data):
+    """Render bike nodes
 
     Args:
         filtered_data (dict): Filtered GeoJSON data.
-        zoom (int): Current map zoom level.
 
     Returns:
         dl.GeoJSON or None: Node layer component.
     """
-    if not filtered_data or zoom < min_zoom_points:
+    if not filtered_data:
         return None
-    return dl.GeoJSON(
-        data=filtered_data["nodes"]
-    )
+    else:
+        return dl.GeoJSON(
+            data=filtered_data["nodes_unique"],
+            cluster=True,
+            zoomToBoundsOnClick=True,
+            superClusterOptions={"radius": 150}
+        )
 
 @app.callback(
     Output("table-segments-agg", "data"),
