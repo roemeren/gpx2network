@@ -17,10 +17,11 @@ import requests
 import re
 import subprocess
 import platform
-from shapely.geometry import LineString, MultiLineString
+from shapely.geometry import Point, LineString, MultiLineString
 from dash import html, dcc, Output, Input, State, dash_table
 from dash.exceptions import PreventUpdate
 from pathlib import Path
+from tqdm import tqdm
 
 # ---------- Constants ----------
 # files and folders
@@ -28,9 +29,15 @@ UPLOAD_FOLDER = "data/uploads"
 RES_FOLDER = "static" # folder for output files, automatically served by Dash for downloads
 SCRIPTS_FOLDER = "../scripts"
 
-# processing
-buffer_distance = 20  # buffer distance in meters
+# geoprocessing
+buffer_distance = 20  # in meters
 intersect_threshold = 0.75
+node_width = 3
+input_gpkg = "../data/temp/rcn_output.gpkg"
+multiline_geojson = '../data/geojson/gdf_multiline.geojson'
+point_geojson = '../data/geojson/gdf_point.geojson'
+multiline_geojson_proj = '../data/geojson/gdf_multiline_projected.geojson'
+point_geojson_proj = '../data/geojson/gdf_point_projected.geojson'
 
 # application
 progress_state = {
