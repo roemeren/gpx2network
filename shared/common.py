@@ -13,14 +13,20 @@ import gpxpy
 import base64
 import datetime
 import xml.etree.ElementTree as ET
+import requests
+import re
+import subprocess
+import platform
 from shapely.geometry import LineString, MultiLineString
 from dash import html, dcc, Output, Input, State, dash_table
 from dash.exceptions import PreventUpdate
+from pathlib import Path
 
 # ---------- Constants ----------
 # files and folders
 UPLOAD_FOLDER = "data/uploads"
 RES_FOLDER = "static" # folder for output files, automatically served by Dash for downloads
+SCRIPTS_FOLDER = "../scripts"
 
 # processing
 buffer_distance = 20  # buffer distance in meters
