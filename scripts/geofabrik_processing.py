@@ -73,7 +73,7 @@ def enrich_with_osm_ids(
     gdf_point: gpd.GeoDataFrame,
     max_dist: float = 20.0,
     node_width: int = 3,
-    show_progress: bool = True
+    use_tqdm: bool = True
 ):
     """
     Enrich segment MultiLineStrings with osm_id_from and osm_id_to using buffer intersection.
@@ -83,7 +83,7 @@ def enrich_with_osm_ids(
         gdf_point (GeoDataFrame): Points with 'rcn_ref' (node number) and 'osm_id'.
         max_dist (float, optional): Buffer distance around segments to find candidate nodes (meters). Defaults to 20.0.
         node_width (int, optional): Width for zero-padding node IDs. Defaults to 3.
-        show_progress (bool, optional): Whether to display a progress bar. Defaults to True.
+        use_tqdm (bool, optional): Whether to display a progress bar. Defaults to True.
 
     Returns:
         tuple:
@@ -114,7 +114,7 @@ def enrich_with_osm_ids(
     osm_from_list = []
     osm_to_list = []
 
-    if show_progress:
+    if use_tqdm:
         iterator = tqdm(gdf_multiline.iterrows(), total=len(gdf_multiline), desc="Matching segments")
     else:
         iterator = gdf_multiline.iterrows()
@@ -140,8 +140,9 @@ def enrich_with_osm_ids(
             osm_to_list.append(None)
 
         # Print progress if not using tqdm
-        if not show_progress and (idx + 1) % print_every == 0:
-            print(f"[INFO] Processed {idx + 1}/{len(gdf_multiline)} segments")
+        if not use_tqdm and (idx + 1) % print_every == 0:
+            percent = 100 * (idx + 1) / len(gdf_multiline)
+            print(f"[INFO] Processed {idx + 1}/{len(gdf_multiline)} segments ({percent:.1f}%)")
 
     gdf_multiline['osm_id_from'] = osm_from_list
     gdf_multiline['osm_id_to'] = osm_to_list
@@ -172,7 +173,7 @@ def enrich_with_osm_ids(
 
     return gdf_multiline, gdf_point
 
-def process_osm_data(show_progress=True):
+def process_osm_data(use_tqdm=True):
     """
     Download Belgium OSM data, process segments and points, 
     enrich segments with OSM node IDs, and save GeoJSON outputs.
@@ -224,7 +225,7 @@ def process_osm_data(show_progress=True):
     print("[INFO] Enriching multilines with OSM node IDs...")
     gdf_multiline_projected, gdf_point_projected = \
         enrich_with_osm_ids(gdf_multiline_projected, gdf_point_projected, 
-                            buffer_distance, node_width, show_progress)
+                            buffer_distance, node_width, use_tqdm)
     print("[INFO] Enrichment completed.")
 
     # Convert the enriched result back to WGS84
@@ -243,6 +244,6 @@ def process_osm_data(show_progress=True):
 
 if __name__ == "__main__":
     current_os = platform.system()
-    show_progress = (current_os == "Windows")
-    process_osm_data(show_progress)
+    use_tqdm = (current_os == "Windows")
+    process_osm_data(use_tqdm)
     
