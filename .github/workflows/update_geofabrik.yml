@@ -85,7 +85,7 @@ jobs:
       # Run processing script
       - name: Run Python processing
         run: |
-          python -m scripts.geofabrik_processing .cache/geofabrik/belgium-latest.osm.pbf
+          python -m scripts.geofabrik_processing
 
       # # Update DATA_VERSION.txt next to outputs
       # - name: Update DATA_VERSION.txt

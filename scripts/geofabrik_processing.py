@@ -167,7 +167,7 @@ def enrich_with_osm_ids(
 
     return gdf_multiline, gdf_point
 
-def process_osm_data(osm_file=input_gpkg):
+def process_osm_data():
     """
     Download Belgium OSM data, process segments and points, 
     enrich segments with OSM node IDs, and save GeoJSON outputs.
@@ -191,9 +191,9 @@ def process_osm_data(osm_file=input_gpkg):
         )
 
     # Read from geopackage
-    print(f"[INFO] Reading GeoPackage: {osm_file}")
-    gdf_multiline = gpd.read_file(osm_file, layer=0)
-    gdf_point = gpd.read_file(osm_file, layer=1)
+    print(f"[INFO] Reading GeoPackage: {input_gpkg}")
+    gdf_multiline = gpd.read_file(input_gpkg, layer=0)
+    gdf_point = gpd.read_file(input_gpkg, layer=1)
     print(f"[INFO] Loaded {len(gdf_multiline)} multilines and {len(gdf_point)} points.")
 
     # List of tags you want to keep
@@ -237,12 +237,5 @@ def process_osm_data(osm_file=input_gpkg):
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
+    process_osm_data()
     current_os = platform.system()
-    if current_os == "Windows":
-        process_osm_data()
-    else:
-        # sys.argv[0] is script/module name, the actual argument is index 1
-        if len(sys.argv) != 2:
-            print("Usage: python process_data.py <osm_file>")
-            sys.exit(1)
-        process_osm_data(sys.argv[1])
