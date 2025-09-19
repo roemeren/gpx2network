@@ -22,6 +22,14 @@ jobs:
           fi
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install requests
+        run: pip install requests==2.32.3
+
       - name: Get latest Geofabrik date
         id: get_latest
         run: |
