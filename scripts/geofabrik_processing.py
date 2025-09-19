@@ -235,9 +235,8 @@ def process_osm_data(osm_file=input_gpkg):
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
-    print(len(sys.argv))
-    print(sys.argv)
-    if len(sys.argv) != 1:
+    # sys.argv[0] is script/module name, the actual argument is index 1
+    if len(sys.argv) != 2:
         print("Usage: python process_data.py <osm_file>")
         sys.exit(1)
     process_osm_data(sys.argv[1])
