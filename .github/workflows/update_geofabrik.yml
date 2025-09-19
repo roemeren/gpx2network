@@ -18,6 +18,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
       # Install Python requirements
       - name: Install Python requirements
         run: pip install -r requirements.txt
@@ -39,7 +47,7 @@ jobs:
           sudo apt-get install -y osmium-tool gdal-bin
 
       # Try to restore cached file first
-      - name: Cache Geofabrik file
+      - name: Restore Geofabrik file
         id: geofabrik-cache
         uses: actions/cache@v4
         with:
