@@ -3,9 +3,8 @@ set -e
 
 echo "=== START OSM PROCESSING ==="
 
-TEMP_DIR="../data/temp"
+TEMP_DIR="data/temp"
 mkdir -p "$TEMP_DIR"
-cd "$TEMP_DIR" || { echo "[ERROR] Failed to cd into $TEMP_DIR"; exit 1; }
 
 # --- Get parameters ---
 DATE=$1
@@ -16,17 +15,21 @@ if [ -z "$DATE" ] || [ -z "$INPUT_FILE" ]; then
     exit 1
 fi
 
-FILENAME="$INPUT_FILE"
-echo "[INFO] Using cached input file: $FILENAME"
+echo "[INFO] Using cached input file: $INPUT_FILE"
 
 # --- Filter OSM data ---
-osmium tags-filter "$FILENAME" r/network=rcn -o rcn_relations.osm.pbf
-osmium tags-filter rcn_relations.osm.pbf n/rcn_ref -o rcn_ref_points.osm.pbf
+RCN_RELATIONS="$TEMP_DIR/rcn_relations.osm.pbf"
+RCN_POINTS="$TEMP_DIR/rcn_ref_points.osm.pbf"
+
+osmium tags-filter "$INPUT_FILE" r/network=rcn -o "$RCN_RELATIONS"
+osmium tags-filter "$RCN_RELATIONS" n/rcn_ref -o "$RCN_POINTS"
 
 # --- Create GeoPackage ---
-ogr2ogr -f "GPKG" rcn_output.gpkg rcn_relations.osm.pbf multilinestrings
-ogr2ogr -f "GPKG" -update rcn_output.gpkg rcn_ref_points.osm.pbf points
-echo "[INFO] GeoPackage created: rcn_output.gpkg"
+OUTPUT_GPKG="$TEMP_DIR/rcn_output.gpkg"
+
+ogr2ogr -f "GPKG" "$OUTPUT_GPKG" "$RCN_RELATIONS" multilinestrings
+ogr2ogr -f "GPKG" -update "$OUTPUT_GPKG" "$RCN_POINTS" points
+echo "[INFO] GeoPackage created: $OUTPUT_GPKG"
 
 echo "[INFO] Processing complete."
 echo "=== END OSM PROCESSING ==="
