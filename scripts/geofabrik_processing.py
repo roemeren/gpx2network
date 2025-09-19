@@ -167,7 +167,7 @@ def enrich_with_osm_ids(
 
     return gdf_multiline, gdf_point
 
-def process_osm_data():
+def process_osm_data(show_progress=True):
     """
     Download Belgium OSM data, process segments and points, 
     enrich segments with OSM node IDs, and save GeoJSON outputs.
@@ -219,7 +219,7 @@ def process_osm_data():
     print("[INFO] Enriching multilines with OSM node IDs...")
     gdf_multiline_projected, gdf_point_projected = \
         enrich_with_osm_ids(gdf_multiline_projected, gdf_point_projected, 
-                            buffer_distance, node_width, True)
+                            buffer_distance, node_width, show_progress)
     print("[INFO] Enrichment completed.")
 
     # Convert the enriched result back to WGS84
@@ -237,5 +237,7 @@ def process_osm_data():
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
-    process_osm_data()
     current_os = platform.system()
+    show_progress = (current_os == "Windows")
+    process_osm_data(show_progress)
+    

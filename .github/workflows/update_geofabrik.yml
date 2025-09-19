@@ -37,7 +37,7 @@ jobs:
           DATE=$(python scripts/geofabrik_date.py)
           echo "date=$DATE" >> $GITHUB_OUTPUT
 
-      - name: Debug print
+      - name: Print latest date
         run: echo "Latest date is ${{ steps.geofabrik-date.outputs.date }}"
 
       # Install system dependencies
