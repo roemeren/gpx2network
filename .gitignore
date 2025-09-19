@@ -11,3 +11,4 @@ static/
 # Ignore other files and folders
 __pycache__/
 notebooks/
+.cache/

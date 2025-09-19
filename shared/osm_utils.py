@@ -1,4 +1,5 @@
 from shared.common import *
+from scripts.geofabrik import *
 
 def parse_and_filter_tags(tag_string, tags_to_keep=None):
     """
@@ -48,31 +49,6 @@ def explode_tags(df, tags_column, tags_to_keep=None):
     exploded_df = pd.concat([df.drop(columns=[tags_column]), tags_df], axis=1)
     
     return exploded_df
-
-def get_latest_geofabrik_date(country: str="belgium") -> str:
-    """
-    Returns the latest yymmdd string for a given country on Geofabrik Europe page.
-
-    Args:
-        country (str): country name, e.g., "belgium", "france", etc.
-
-    Returns:
-        str: latest date in YYMMDD format, e.g., "250917"
-    """
-    url = "https://download.geofabrik.de/europe/"
-    resp = requests.get(url)
-    resp.raise_for_status()
-    
-    # Regex pattern: country-YYMMDD.osm.pbf
-    pattern = rf'{re.escape(country)}-(\d{{6}})\.osm\.pbf'
-    matches = re.findall(pattern, resp.text)
-    
-    if not matches:
-        raise ValueError(f"No files found for {country} on Geofabrik page")
-    
-    # Return the latest date
-    latest_date = sorted(matches)[-1]
-    return latest_date
 
 def enrich_with_osm_ids(
     gdf_multiline: gpd.GeoDataFrame,
@@ -171,7 +147,7 @@ def enrich_with_osm_ids(
 
     return gdf_multiline, gdf_point
 
-def process_osm_data():
+def process_osm_data(osm_file=input_gpkg):
     """
     Download Belgium OSM data, process segments and points, 
     enrich segments with OSM node IDs, and save GeoJSON outputs.
@@ -182,25 +158,22 @@ def process_osm_data():
     osm_version = get_latest_geofabrik_date()
     print(f"[INFO] Latest Geofabrik OSM version: {osm_version}")
 
-    # Get absolute path to batch script to avoid relative path issues on Windows
-    script_path = Path(os.path.join(SCRIPTS_FOLDER, "process_osm.bat")).resolve()
-    print(f"[INFO] Using script: {script_path}")
-
     # Download Belgium OSM, extract rcn data, create GeoPackage and keep key files
     if current_os == "Windows":
+        # Get absolute path to batch script to avoid relative path issues on Windows
+        script_path = Path(os.path.join(SCRIPTS_FOLDER, "process_osm.bat")).resolve()
+        print(f"[INFO] Using script: {script_path}")
+        # assumption: running locally
         subprocess.run(
             [script_path, osm_version],
             check=True,
             shell=True  # needed on Windows to run a .bat file
         )
-    else:
-        # Bash version - not tested yet but to be used for GitHub Actions
-        subprocess.run(["bash", script_path, osm_version], check=True)
 
     # Read from geopackage
-    print(f"[INFO] Reading GeoPackage: {input_gpkg}")
-    gdf_multiline = gpd.read_file(input_gpkg, layer=0)
-    gdf_point = gpd.read_file(input_gpkg, layer=1)
+    print(f"[INFO] Reading GeoPackage: {osm_file}")
+    gdf_multiline = gpd.read_file(osm_file, layer=0)
+    gdf_point = gpd.read_file(osm_file, layer=1)
     print(f"[INFO] Loaded {len(gdf_multiline)} multilines and {len(gdf_point)} points.")
 
     # List of tags you want to keep
@@ -243,5 +216,8 @@ def process_osm_data():
     gdf_point_projected.to_file(point_geojson_proj, driver='GeoJSON')
     print("[INFO] All outputs saved successfully.")
 
-# if __name__ == "__main__":
-#     process_osm_data()
+if __name__ == "__main__":
+    if len(sys.argv) != 1:
+        print("Usage: python process_data.py <osm_file>")
+        sys.exit(1)
+    process_osm_data(sys.argv[1])
