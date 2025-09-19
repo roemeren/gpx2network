@@ -72,15 +72,15 @@ jobs:
           path: .cache/geofabrik/belgium-latest.osm.pbf
           key: belgium-${{ steps.geofabrik-date.outputs.date }}
 
-      # # Run preprocessing script
-      # - name: Run Bash preprocessing
-      #   run: |
-      #     bash scripts/process_osm.sh ${{ steps.geofabrik-date.outputs.date }} .cache/geofabrik/belgium-latest.osm.pbf
+      # Run preprocessing script
+      - name: Run Bash preprocessing
+        run: |
+          bash scripts/process_osm.sh ${{ steps.geofabrik-date.outputs.date }} .cache/geofabrik/belgium-latest.osm.pbf
         
-      # # Run processing script
-      # - name: Run Python processing
-      #   run: |
-      #     python scripts/process_data.py .cache/geofabrik/belgium-latest.osm.pbf
+      # Run processing script
+      - name: Run Python processing
+        run: |
+          python scripts/process_data.py .cache/geofabrik/belgium-latest.osm.pbf
 
       # # Update DATA_VERSION.txt next to outputs
       # - name: Update DATA_VERSION.txt
