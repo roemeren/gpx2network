@@ -18,6 +18,10 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Install Python requirements
+      - name: Install Python requirements
+        run: pip install -r requirements.txt
+
       # Get latest Geofabrik date
       - name: Get Geofabrik date
         id: geofabrik-date
@@ -33,10 +37,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y osmium-tool gdal-bin
-
-      # Install Python requirements
-      - name: Install Python requirements
-        run: pip install -r requirements.txt
 
       - name: Cache Geofabrik file
         id: geofabrik-cache
