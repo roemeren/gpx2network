@@ -44,8 +44,8 @@ echo "[INFO] Added points layer to GeoPackage"
 echo "[INFO] GeoPackage created successfully: $OUTPUT_GPKG"
 
 # --- Summary ---
-NUM_RELATIONS=$(osmium fileinfo "$RCN_RELATIONS" | grep 'number of objects:' || echo "0")
-NUM_POINTS=$(osmium fileinfo "$RCN_POINTS" | grep 'number of objects:' || echo "0")
+NUM_RELATIONS=$(osmium count -t r "$RCN_RELATIONS" | awk '{print $1}')
+NUM_POINTS=$(osmium count -t n "$RCN_POINTS" | awk '{print $1}')
 echo "[INFO] Summary: $NUM_RELATIONS relations, $NUM_POINTS points"
 
 echo "[INFO] Processing complete."
