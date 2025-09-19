@@ -46,6 +46,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y osmium-tool gdal-bin
 
+      - name: Check versions of osmium and gdal
+        run: |
+          osmium --version
+          ogr2ogr --version
+
       # Try to restore cached file first
       - name: Restore Geofabrik file
         id: geofabrik-cache
