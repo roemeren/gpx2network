@@ -1,4 +1,5 @@
-from shared.common import *
+import requests
+import re
 
 def get_latest_geofabrik_date(country: str="belgium") -> str:
     """
