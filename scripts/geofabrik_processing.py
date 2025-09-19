@@ -1,5 +1,23 @@
-from shared.common import *
-from scripts.geofabrik import *
+import os
+import sys
+import pandas as pd
+import geopandas as gpd
+import tqdm
+import platform
+import subprocess
+from pathlib import Path
+from scripts.geofabrik_date import *
+
+# geoprocessing
+SCRIPTS_FOLDER = "../scripts"
+buffer_distance = 20  # in meters
+intersect_threshold = 0.75
+node_width = 3
+input_gpkg = "data/temp/rcn_output.gpkg"
+multiline_geojson = 'data/geojson/gdf_multiline.geojson'
+point_geojson = 'data/geojson/gdf_point.geojson'
+multiline_geojson_proj = 'data/geojson/gdf_multiline_projected.geojson'
+point_geojson_proj = 'data/geojson/gdf_point_projected.geojson'
 
 def parse_and_filter_tags(tag_string, tags_to_keep=None):
     """
