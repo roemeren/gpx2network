@@ -1,7 +1,13 @@
 name: Update Geofabrik Data
 
 on:
-  workflow_dispatch: # run manually
+  # run manually, or through controlling behavior via the 'overwrite' input
+  workflow_dispatch:
+    inputs:
+      overwrite:
+        description: "Overwrite files even if not newer"
+        required: true
+        default: "true"
 
 jobs:
   update-data:
