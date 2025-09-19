@@ -22,7 +22,7 @@ jobs:
       - name: Get Geofabrik date
         id: geofabrik-date
         run: |
-          DATE=$(python shared/get_geofabrik_date.py)
+          DATE=$(python scripts/geofabrik.py)
           echo "date=$DATE" >> $GITHUB_OUTPUT
 
       - name: Debug print
