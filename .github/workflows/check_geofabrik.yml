@@ -8,6 +8,9 @@ on:
 jobs:
   check-latest:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write  # required to trigger another workflow via repository-dispatch
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
