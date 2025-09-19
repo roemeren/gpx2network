@@ -44,6 +44,6 @@ jobs:
         if: steps.compare.outputs.update_needed == 'true'
         uses: peter-evans/repository-dispatch@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_FOR_DISPATCH }}
           repository: ${{ github.repository }}
           event-type: update-data
