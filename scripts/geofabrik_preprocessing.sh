@@ -38,7 +38,7 @@ OUTPUT_GPKG="$TEMP_DIR/rcn_output.gpkg"
 echo "[INFO] Creating GeoPackage: $OUTPUT_GPKG"
 
 #ogr2ogr -f "GPKG" "$OUTPUT_GPKG" "$RCN_RELATIONS" multilinestrings
-ogr2ogr -f "GPKG" data\temp\rcn_output.gpkg data\temp\rcn_relations.osm.pbf multilinestrings
+ogr2ogr -f "GPKG" data/temp/rcn_output.gpkg data/temp/rcn_relations.osm.pbf multilinestrings
 echo "[INFO] Added multilinestrings layer to GeoPackage"
 
 #ogr2ogr -f "GPKG" -update "$OUTPUT_GPKG" "$RCN_POINTS" points
