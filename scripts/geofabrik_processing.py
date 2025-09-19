@@ -2,14 +2,14 @@ import os
 import sys
 import pandas as pd
 import geopandas as gpd
-import tqdm
 import platform
 import subprocess
 from pathlib import Path
 from scripts.geofabrik_date import *
+from tqdm import tqdm
 
 # geoprocessing
-SCRIPTS_FOLDER = "../scripts"
+SCRIPTS_FOLDER = "scripts"
 buffer_distance = 20  # in meters
 intersect_threshold = 0.75
 node_width = 3
@@ -57,6 +57,8 @@ def explode_tags(df, tags_column, tags_to_keep=None):
     Returns:
         GeoDataFrame: Original GeoDataFrame with the dictionary keys expanded as columns.
     """
+    # debug
+    print(df.shape)
     # Convert the string representation of the dictionary to a Python dictionary
     exploded_tags = df[tags_column].apply(lambda x: parse_and_filter_tags(x, tags_to_keep) if isinstance(x, str) else {})
     
@@ -235,8 +237,12 @@ def process_osm_data(osm_file=input_gpkg):
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
-    # sys.argv[0] is script/module name, the actual argument is index 1
-    if len(sys.argv) != 2:
-        print("Usage: python process_data.py <osm_file>")
-        sys.exit(1)
-    process_osm_data(sys.argv[1])
+    current_os = platform.system()
+    if current_os == "Windows":
+        process_osm_data()
+    else:
+        # sys.argv[0] is script/module name, the actual argument is index 1
+        if len(sys.argv) != 2:
+            print("Usage: python process_data.py <osm_file>")
+            sys.exit(1)
+        process_osm_data(sys.argv[1])

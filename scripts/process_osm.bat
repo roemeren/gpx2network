@@ -11,18 +11,13 @@ IF "%1"=="" (
     exit /b 1
 )
 SET DATE=%1
-SET FILENAME=belgium-%DATE%.osm.pbf
+SET FILENAME=.cache\belgium-latest.osm.pbf
 
 REM --- Set temp directory ---
-SET TEMP_DIR=..\data\temp
+SET TEMP_DIR=data\temp
 IF NOT EXIST "%TEMP_DIR%" (
     echo [INFO] Creating temp folder: %TEMP_DIR%
     mkdir "%TEMP_DIR%"
-)
-
-cd "%TEMP_DIR%" || (
-    echo [ERROR] Failed to cd into %TEMP_DIR%
-    exit /b 1
 )
 
 REM --- Download OSM PBF if it does not exist ---
@@ -36,24 +31,18 @@ IF EXIST "%FILENAME%" (
 
 REM --- Filter OSM data for rcn network relations ---
 echo [INFO] Filtering OSM data for rcn network relations
-osmium tags-filter "%FILENAME%" r/network=rcn -o rcn_relations.osm.pbf
+osmium tags-filter "%FILENAME%" r/network=rcn -o data\temp\rcn_relations.osm.pbf
 echo [INFO] Extracted rcn relations
 
 echo [INFO] Filtering OSM data for rcn_ref points
-osmium tags-filter rcn_relations.osm.pbf n/rcn_ref -o rcn_ref_points.osm.pbf
+osmium tags-filter data\temp\rcn_relations.osm.pbf n/rcn_ref -o data\temp\rcn_ref_points.osm.pbf
 echo [INFO] Extracted rcn_ref points
 
 REM --- Create output GeoPackage ---
 echo [INFO] Creating output GeoPackage: rcn_output.gpkg
-ogr2ogr -f "GPKG" rcn_output.gpkg rcn_relations.osm.pbf multilinestrings
-ogr2ogr -f "GPKG" -update rcn_output.gpkg rcn_ref_points.osm.pbf points
-echo [INFO] GeoPackage created: rcn_output.gpkg
-
-REM --- Clean up temporary files ---
-echo [INFO] Cleaning up temporary files (keeping %FILENAME% and rcn_output.gpkg)
-for %%f in (*) do (
-    if not "%%f"=="%FILENAME%" if not "%%f"=="rcn_output.gpkg" del /q "%%f"
-)
+ogr2ogr -f "GPKG" data\temp\rcn_output.gpkg data\temp\rcn_relations.osm.pbf multilinestrings
+ogr2ogr -f "GPKG" -update data\temp\rcn_output.gpkg data\temp\rcn_ref_points.osm.pbf points
+echo [INFO] GeoPackage created: data\temp\rcn_output.gpkg
 
 echo [INFO] Processing complete.
 echo === END OSM PROCESSING ===
