@@ -1,15 +1,62 @@
 name: Update Geofabrik Data
 
 on:
-  # # run manually, or triggered automatically by check-latest workflow
   workflow_dispatch:
-  repository_dispatch:
-    types: [update-data]
+    inputs:
+      mode:
+        description: "Choose update mode"
+        required: true
+        default: "use-outcome"
+        type: choice
+        options:
+          - use-outcome
+          - ignore-outcome
+  schedule:
+    - cron: '0 2 * * 1' # weekly
 
 jobs:
+  check-latest:
+    runs-on: ubuntu-latest
+    outputs:
+      update_needed: ${{ steps.compare.outputs.update_needed }}
+      latest_date: ${{ steps.get_latest.outputs.latest }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get current DATA_VERSION
+        id: get_current
+        run: |
+          if [ -f data/geojson/DATA_VERSION.txt ]; then
+            CURRENT=$(cat data/geojson/DATA_VERSION.txt)
+          else
+            CURRENT=0
+          fi
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Get latest Geofabrik date
+        id: get_latest
+        run: |
+          DATE=$(python scripts/geofabrik_date.py)
+          echo "latest=$DATE" >> $GITHUB_OUTPUT
+
+      - name: Compare dates
+        id: compare
+        run: |
+          if [ "${{ steps.get_latest.outputs.latest }}" -gt "${{ steps.get_current.outputs.current }}" ]; then
+            echo "update_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "update_needed=false" >> $GITHUB_OUTPUT
+      
+      - name: Print dates
+        run: |
+          echo "Current DATA_VERSION: ${{ steps.get_current.outputs.current }}"
+          echo "Latest Geofabrik date: ${{ steps.get_latest.outputs.latest }}"
+  
   update-data:
     runs-on: ubuntu-latest
-
+    needs: check-latest
+    if: ${{ github.event.inputs.mode == 'ignore-outcome' || needs.check-latest.outputs.update_needed == 'true' }}
     steps:
       # Checkout repo
       - name: Checkout repo
@@ -33,16 +80,6 @@ jobs:
       - name: Install Python requirements
         run: pip install -r requirements.txt
 
-      # Get latest Geofabrik date
-      - name: Get Geofabrik date
-        id: geofabrik-date
-        run: |
-          DATE=$(python scripts/geofabrik_date.py)
-          echo "date=$DATE" >> $GITHUB_OUTPUT
-
-      - name: Print latest date
-        run: echo "Latest date is ${{ steps.geofabrik-date.outputs.date }}"
-
       # Install system dependencies
       - name: Install system dependencies
         run: |
@@ -60,7 +97,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/geofabrik/belgium-latest.osm.pbf
-          key: belgium-${{ steps.geofabrik-date.outputs.date }}
+          key: belgium-${{ needs.check-latest.outputs.latest_date }}
 
       # Download Geofabrik file only if cache was missed
       - name: Download Geofabrik file if needed
@@ -68,7 +105,7 @@ jobs:
         run: |
           mkdir -p .cache/geofabrik
           echo "[INFO] Downloading Belgium OSM PBF"
-          curl -L "https://download.geofabrik.de/europe/belgium-${{ steps.geofabrik-date.outputs.date }}.osm.pbf" \
+          curl -L "https://download.geofabrik.de/europe/belgium-${{ needs.check-latest.outputs.latest_date }}.osm.pbf" \
               -o ".cache/geofabrik/belgium-latest.osm.pbf"
           echo "[INFO] Download complete"
 
@@ -78,12 +115,12 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache/geofabrik/belgium-latest.osm.pbf
-          key: belgium-${{ steps.geofabrik-date.outputs.date }}
+          key: belgium-${{ needs.check-latest.outputs.latest_date }}
 
       # Run preprocessing script
       - name: Run Bash preprocessing
         run: |
-          bash scripts/geofabrik_preprocessing.sh ${{ steps.geofabrik-date.outputs.date }} .cache/geofabrik/belgium-latest.osm.pbf
+          bash scripts/geofabrik_preprocessing.sh ${{ needs.check-latest.outputs.latest_date }} .cache/geofabrik/belgium-latest.osm.pbf
         
       # Run processing script
       - name: Run Python processing
@@ -94,7 +131,7 @@ jobs:
       # - name: Update DATA_VERSION.txt
       #   run: |
       #     mkdir -p data/geojson
-      #     echo "${{ steps.geofabrik-date.outputs.date }}" > data/geojson/DATA_VERSION.txt
+      #     echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
 
       # # Commit changes and create PR
       # - name: Commit changes
@@ -103,17 +140,17 @@ jobs:
       #     # numeric ID corresponds to repository’s GitHub account
       #     git config user.email "17805076+github-actions[bot]@users.noreply.github.com"
 
-      #     BRANCH="update-data-${{ steps.geofabrik-date.outputs.date }}"
+      #     BRANCH="update-data-${{ needs.check-latest.outputs.latest_date }}"
       #     git checkout -b "$BRANCH"
 
       #     git add data/geojson/
-      #     git commit -m "Update data to version ${{ steps.geofabrik-date.outputs.date }}" || echo "No changes to commit"
+      #     git commit -m "Update data to version ${{ needs.check-latest.outputs.latest_date }}" || echo "No changes to commit"
       #     git push origin "$BRANCH" || echo "Branch already exists"
 
       # - name: Create Pull Request
       #   uses: peter-evans/create-pull-request@v6
       #   with:
-      #     branch: update-data-${{ steps.geofabrik-date.outputs.date }}
-      #     title: "Update data to ${{ steps.geofabrik-date.outputs.date }}"
+      #     branch: update-data-${{ needs.check-latest.outputs.latest_date }}
+      #     title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
       #     body: "Automated data update from Geofabrik."
-      #     commit-message: "Update data to version ${{ steps.geofabrik-date.outputs.date }}"
+      #     commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
