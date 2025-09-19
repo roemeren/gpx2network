@@ -22,14 +22,6 @@ jobs:
           fi
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
-      - name: Install requests
-        run: pip install requests==2.32.3
-
       - name: Get latest Geofabrik date
         id: get_latest
         run: |
@@ -40,17 +32,15 @@ jobs:
         id: compare
         run: |
           if [ "${{ steps.get_latest.outputs.latest }}" -gt "${{ steps.get_current.outputs.current }}" ]; then
-            echo "Update needed"
             echo "update_needed=true" >> $GITHUB_OUTPUT
           else
-            echo "No update needed"
             echo "update_needed=false" >> $GITHUB_OUTPUT
-    
+          fi
+
       - name: Trigger update-data if needed
         if: steps.compare.outputs.update_needed == 'true'
-        uses: peter-evans/workflow-dispatch@v1
+        uses: peter-evans/repository-dispatch@v2
         with:
-          workflow: "update-data.yml"
-          ref: main
-          inputs:
-          overwrite: "false"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          event-type: update-data

@@ -1,13 +1,10 @@
 name: Update Geofabrik Data
 
 on:
-  # run manually, or through controlling behavior via the 'overwrite' input
+  # # run manually, or triggered automatically by check-latest workflow
   workflow_dispatch:
-    inputs:
-      overwrite:
-        description: "Overwrite files even if not newer"
-        required: true
-        default: "true"
+  repository_dispatch:
+    types: [update-data]
 
 jobs:
   update-data:
