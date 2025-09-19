@@ -142,7 +142,7 @@ def enrich_with_osm_ids(
         # Print progress if not using tqdm
         if not use_tqdm and (idx + 1) % print_every == 0:
             percent = 100 * (idx + 1) / len(gdf_multiline)
-            print(f"[INFO] Processed {idx + 1}/{len(gdf_multiline)} segments ({percent:.1f}%)")
+            print(f"[INFO] Processed {idx + 1}/{len(gdf_multiline)} segments ({percent:.0f}%)")
 
     gdf_multiline['osm_id_from'] = osm_from_list
     gdf_multiline['osm_id_to'] = osm_to_list
@@ -245,5 +245,6 @@ def process_osm_data(use_tqdm=True):
 if __name__ == "__main__":
     current_os = platform.system()
     use_tqdm = (current_os == "Windows")
-    process_osm_data(use_tqdm)
+    # override use_tqdm=False because progress not visible in real-time
+    process_osm_data(True)
     
