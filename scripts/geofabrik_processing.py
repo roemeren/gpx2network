@@ -57,8 +57,6 @@ def explode_tags(df, tags_column, tags_to_keep=None):
     Returns:
         GeoDataFrame: Original GeoDataFrame with the dictionary keys expanded as columns.
     """
-    # debug
-    print(df.shape)
     # Convert the string representation of the dictionary to a Python dictionary
     exploded_tags = df[tags_column].apply(lambda x: parse_and_filter_tags(x, tags_to_keep) if isinstance(x, str) else {})
     
@@ -116,10 +114,13 @@ def enrich_with_osm_ids(
     osm_from_list = []
     osm_to_list = []
 
-    iterator = tqdm(gdf_multiline.iterrows(), total=len(gdf_multiline), desc="Matching segments") \
-               if show_progress else gdf_multiline.iterrows()
+    if show_progress:
+        iterator = tqdm(gdf_multiline.iterrows(), total=len(gdf_multiline), desc="Matching segments")
+    else:
+        iterator = gdf_multiline.iterrows()
+        print_every = max(1, len(gdf_multiline) // 10)  # print 10 times during loop
 
-    for _, seg in iterator:
+    for idx, seg in iterator:
         buffer_geom = seg.geometry.buffer(max_dist)
 
         # Node FROM
@@ -137,6 +138,10 @@ def enrich_with_osm_ids(
             osm_to_list.append(candidates_to['osm_id'].min())
         else:
             osm_to_list.append(None)
+
+        # Print progress if not using tqdm
+        if not show_progress and (idx + 1) % print_every == 0:
+            print(f"[INFO] Processed {idx + 1}/{len(gdf_multiline)} segments")
 
     gdf_multiline['osm_id_from'] = osm_from_list
     gdf_multiline['osm_id_to'] = osm_to_list
