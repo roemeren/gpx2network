@@ -6,13 +6,13 @@ on:
       mode:
         description: "Choose update mode"
         required: true
-        default: "use-outcome"
+        default: "use-outcome" # also used for scheduled run
         type: choice
         options:
           - use-outcome
           - ignore-outcome
-  schedule:
-    - cron: '0 2 * * 1' # weekly
+  # schedule:
+  #   - cron: '0 2 * * 1' # weekly
 
 jobs:
   check-latest:

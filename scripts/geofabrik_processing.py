@@ -246,6 +246,6 @@ if __name__ == "__main__":
         tqdm_params = tqdm_default
     else:
         # GitHub Actions / CI (less frequent updates)
-        tqdm_params = dict(mininterval=2.0, miniters=50) 
+        tqdm_params = dict(mininterval=3.0, miniters=50) 
     process_osm_data(tqdm_params)
     
