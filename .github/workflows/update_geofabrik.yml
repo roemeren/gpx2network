@@ -6,11 +6,11 @@ on:
       mode:
         description: "Choose update mode"
         required: true
-        default: "use-outcome" # also used for scheduled run
+        default: "force-update" # also used for scheduled run
         type: choice
         options:
-          - use-outcome
-          - ignore-outcome
+          - check-update
+          - force-update
   # schedule:
   #   - cron: '0 2 * * 1' # weekly
 
@@ -57,7 +57,7 @@ jobs:
   update-data:
     runs-on: ubuntu-latest
     needs: check-latest
-    if: ${{ github.event.inputs.mode == 'ignore-outcome' || needs.check-latest.outputs.update_needed == 'true' }}
+    if: ${{ github.event.inputs.mode == 'force-update' || needs.check-latest.outputs.update_needed == 'true' }}
     steps:
       # Checkout repo
       - name: Checkout repo
