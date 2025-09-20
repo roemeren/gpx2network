@@ -123,13 +123,13 @@ jobs:
         run: |
           python -m scripts.geofabrik_processing
 
-      # Update DATA_VERSION.txt next to outputs
-      - name: Update DATA_VERSION.txt
+      # Update data version
+      - name: Update data version file
         run: |
           mkdir -p data/geojson
           echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
 
-      # Commit changes and create Pull Request
+      # Commit changes and create Pull Request (idempotent)
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
