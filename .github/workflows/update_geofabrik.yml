@@ -139,4 +139,4 @@ jobs:
           title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
           body: "Automated data update from Geofabrik."
           commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
-          force: true  # ensures PR creation even if no detected changes
+          
