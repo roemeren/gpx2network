@@ -87,8 +87,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y osmium-tool gdal-bin
 
-      # Try to restore cached file first
-      - name: Restore Geofabrik file
+      # Restore & cache Geofabrik file
+      - name: Restore & cache Geofabrik file
         id: geofabrik-cache
         uses: actions/cache@v4
         with:
@@ -123,30 +123,30 @@ jobs:
         run: |
           python -m scripts.geofabrik_processing
 
-      # # Update DATA_VERSION.txt next to outputs
-      # - name: Update DATA_VERSION.txt
-      #   run: |
-      #     mkdir -p data/geojson
-      #     echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
+      # Update DATA_VERSION.txt next to outputs
+      - name: Update DATA_VERSION.txt
+        run: |
+          mkdir -p data/geojson
+          echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
 
-      # # Commit changes and create PR
-      # - name: Commit changes
-      #   run: |
-      #     git config user.name "github-actions[bot]"
-      #     # numeric ID corresponds to repository’s GitHub account
-      #     git config user.email "17805076+github-actions[bot]@users.noreply.github.com"
+      # Commit changes and create PR
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          # numeric ID corresponds to repository’s GitHub account
+          git config user.email "17805076+github-actions[bot]@users.noreply.github.com"
 
-      #     BRANCH="update-data-${{ needs.check-latest.outputs.latest_date }}"
-      #     git checkout -b "$BRANCH"
+          BRANCH="update-data-${{ needs.check-latest.outputs.latest_date }}"
+          git checkout -b "$BRANCH"
 
-      #     git add data/geojson/
-      #     git commit -m "Update data to version ${{ needs.check-latest.outputs.latest_date }}" || echo "No changes to commit"
-      #     git push origin "$BRANCH" || echo "Branch already exists"
+          git add data/geojson/
+          git commit -m "Update data to version ${{ needs.check-latest.outputs.latest_date }}" || echo "No changes to commit"
+          git push origin "$BRANCH" || echo "Branch already exists"
 
-      # - name: Create Pull Request
-      #   uses: peter-evans/create-pull-request@v6
-      #   with:
-      #     branch: update-data-${{ needs.check-latest.outputs.latest_date }}
-      #     title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
-      #     body: "Automated data update from Geofabrik."
-      #     commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: update-data-${{ needs.check-latest.outputs.latest_date }}
+          title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
+          body: "Automated data update from Geofabrik."
+          commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
