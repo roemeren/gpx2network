@@ -14,9 +14,6 @@ on:
   # schedule:
   #   - cron: '0 2 * * 1' # weekly
 
-permissions:
-  contents: write
-
 jobs:
   check-latest:
     runs-on: ubuntu-latest
@@ -136,6 +133,7 @@ jobs:
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
+          token: ${{ secrets.PAT_FOR_PR }}
           branch: update-data-${{ needs.check-latest.outputs.latest_date }}
           base: main
           title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
