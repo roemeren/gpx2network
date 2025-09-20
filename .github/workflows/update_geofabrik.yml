@@ -150,6 +150,7 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           branch: update-data-${{ needs.check-latest.outputs.latest_date }}
+          base: main
           title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
           body: "Automated data update from Geofabrik."
           commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
