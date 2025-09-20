@@ -6,7 +6,7 @@ on:
       mode:
         description: "Choose update mode"
         required: true
-        default: "force-update" # also used for scheduled run
+        default: "check-update" # also used for scheduled run
         type: choice
         options:
           - check-update
