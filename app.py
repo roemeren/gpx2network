@@ -3,22 +3,18 @@ from shared.geoprocessing import *
 from shared.download import *
 
 # Ensure data and caches
-pickle_paths = ensure_data()
+parquet_paths = ensure_data()
 
 # Ensure static folder exists
 os.makedirs(RES_FOLDER, exist_ok=True)
 
-# Load bike network GeoDataFrame (for processing)
-with open(pickle_paths["gdf_multiline_projected.geojson"], "rb") as f:
-    bike_network = pickle.load(f)
+# Load bike network GeoDataFrames (for processing)
+bike_network = gpd.read_parquet(parquet_paths["gdf_multiline_projected.geojson"])
+point_geodf = gpd.read_parquet(parquet_paths["gdf_point_projected.geojson"])
 
 # Load bike network GeoJSON lines (for mapping)
 with open(network_geojson , "r") as f:
    geojson_network = json.load(f)
-
-# Load bike network GeoJSON points (for mapping)
-with open(pickle_paths["gdf_point_projected.geojson"], "rb") as f:
-    point_geodf = pickle.load(f)
 
 # Other initialization
 geojson_points = {}

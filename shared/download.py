@@ -11,7 +11,7 @@ def ensure_data():
     Ensure that required GeoJSON data and cached Pickle files exist locally.
 
     - Downloads missing GeoJSON files from Google Drive into `data/intermediate`.
-    - Creates corresponding `.pkl` files (containing GeoDataFrame objects for faster loading) if they do not yet exist.
+    - Creates corresponding `.parquet` files (containing GeoDataFrame objects for faster loading) if they do not yet exist.
 
     Returns:
         dict: A mapping from original GeoJSON filenames to their local Pickle paths.
@@ -29,11 +29,11 @@ def ensure_data():
 
     print("Checking required data files...")
 
-    pickle_paths = {}
+    parquet_paths = {}
 
     for fid, fname in files.items():
         geojson_path = os.path.join(download_dir, fname)
-        pickle_path = geojson_path.replace(".geojson", ".pkl")
+        parquet_path = geojson_path.replace(".geojson", ".parquet")
 
         # Download GeoJSON if missing
         if not os.path.exists(geojson_path):
@@ -42,12 +42,11 @@ def ensure_data():
             gdown.download(url, geojson_path, quiet=False)
 
         # Create pickle cache if missing
-        if not os.path.exists(pickle_path):
+        if not os.path.exists(parquet_path):
             print(f"Creating pickle cache for {fname}...")
             gdf = gpd.read_file(geojson_path)
-            with open(pickle_path, "wb") as f:
-                pickle.dump(gdf, f)
+            gdf.to_parquet(parquet_path, engine="pyarrow")
 
-        pickle_paths[fname] = pickle_path
+        parquet_paths[fname] = parquet_path
 
-    return pickle_paths
+    return parquet_paths

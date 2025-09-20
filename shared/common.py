@@ -1,7 +1,6 @@
 # ---------- Imports ----------
 import geopandas as gpd
 import pandas as pd
-import pickle
 import os
 import sys
 import gdown
