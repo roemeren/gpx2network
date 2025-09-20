@@ -6,6 +6,7 @@ import platform
 import subprocess
 from pathlib import Path
 from scripts.geofabrik_date import *
+from shared.conversion import simplify_geojson
 from tqdm import tqdm
 
 # geoprocessing
@@ -230,13 +231,21 @@ def process_osm_data(tqdm_params):
     gdf_multiline = gdf_multiline_projected.to_crs(epsg=4326)
     gdf_point = gdf_point_projected.to_crs(epsg=4326)
 
-    # Save the outputs as GeoJSON and/or pickle for use in the app
+    # Save the outputs as GeoJSON and parquet for use in the app
     # compared to shapefiles there is no truncation of column names but takes longer
-    print("[INFO] Saving GeoJSON outputs...")
+    print("[INFO] Saving outputs...")
     gdf_multiline.to_file(multiline_geojson, driver='GeoJSON')
-    gdf_point.to_file(point_geojson, driver='GeoJSON')
     gdf_multiline_projected.to_file(multiline_geojson_proj, driver='GeoJSON')
+    gdf_multiline.to_parquet(multiline_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
+    gdf_multiline_projected.to_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
+    gdf_point.to_file(point_geojson, driver='GeoJSON')
     gdf_point_projected.to_file(point_geojson_proj, driver='GeoJSON')
+    gdf_point.to_parquet(point_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
+    gdf_point_projected.to_parquet(point_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
+    
+    # Create and save simplified version of segments for mapping
+    simplify_geojson(multiline_geojson)
+
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
