@@ -11,7 +11,7 @@ IF "%1"=="" (
     exit /b 1
 )
 SET DATE=%1
-SET FILENAME=.cache\belgium-latest.osm.pbf
+SET FILENAME=belgium-%DATE%.osm.pbf
 
 REM --- Set temp directory ---
 SET TEMP_DIR=data\temp
@@ -25,17 +25,17 @@ IF EXIST "%FILENAME%" (
     echo [INFO] %FILENAME% already exists, skipping download
 ) ELSE (
     echo [INFO] Downloading %FILENAME%
-    curl -s -o "%FILENAME%" "https://download.geofabrik.de/europe/%FILENAME%"
+    curl -s -o ".cache\%FILENAME%" "https://download.geofabrik.de/europe/%FILENAME%"
     echo [INFO] Download complete: %FILENAME%
 )
 
 REM --- Filter OSM data for rcn network relations ---
 echo [INFO] Filtering OSM data for rcn network relations
-osmium tags-filter "%FILENAME%" r/network=rcn -o data\temp\rcn_relations.osm.pbf
+osmium tags-filter ".cache\%FILENAME%" r/network=rcn -o data\temp\rcn_relations.osm.pbf --overwrite
 echo [INFO] Extracted rcn relations
 
 echo [INFO] Filtering OSM data for rcn_ref points
-osmium tags-filter data\temp\rcn_relations.osm.pbf n/rcn_ref -o data\temp\rcn_ref_points.osm.pbf
+osmium tags-filter data\temp\rcn_relations.osm.pbf n/rcn_ref -o data\temp\rcn_ref_points.osm.pbf --overwrite
 echo [INFO] Extracted rcn_ref points
 
 REM --- Create output GeoPackage ---
