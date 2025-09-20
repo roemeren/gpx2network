@@ -1,4 +1,4 @@
-# Ignore all data except geojson and pickle files in data/geojson tracked by LFS
+# Ignore all data except geojson/parquet/txt files in data/geojson tracked by LFS
 data/*
 !data/geojson/
 data/geojson/*
