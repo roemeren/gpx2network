@@ -105,14 +105,6 @@ jobs:
               -o ".cache/geofabrik/belgium-latest.osm.pbf"
           echo "[INFO] Download complete"
 
-      # # Save the newly downloaded file to the cache
-      # - name: Save Geofabrik file to cache
-      #   if: steps.geofabrik-cache.outputs.cache-hit != 'true'
-      #   uses: actions/cache@v4
-      #   with:
-      #     path: .cache/geofabrik/belgium-latest.osm.pbf
-      #     key: belgium-${{ needs.check-latest.outputs.latest_date }}
-
       # Run preprocessing script
       - name: Run Bash preprocessing
         run: |
