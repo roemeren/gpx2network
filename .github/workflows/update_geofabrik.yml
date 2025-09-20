@@ -132,25 +132,13 @@ jobs:
           mkdir -p data/geojson
           echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
 
-      # Commit changes and create PR
-      - name: Commit changes
-        run: |
-          git config user.name "github-actions[bot]"
-          # numeric ID corresponds to repository’s GitHub account
-          git config user.email "17805076+github-actions[bot]@users.noreply.github.com"
-
-          BRANCH="update-data-${{ needs.check-latest.outputs.latest_date }}"
-          git checkout -b "$BRANCH"
-
-          git add data/geojson/
-          git commit -m "Update data to version ${{ needs.check-latest.outputs.latest_date }}" || echo "No changes to commit"
-          git push origin "$BRANCH" || echo "Branch already exists"
-
-      # - name: Create Pull Request
-      #   uses: peter-evans/create-pull-request@v6
-      #   with:
-      #     branch: update-data-${{ needs.check-latest.outputs.latest_date }}
-      #     base: main
-      #     title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
-      #     body: "Automated data update from Geofabrik."
-      #     commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
+      # Commit changes and create Pull Request
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: update-data-${{ needs.check-latest.outputs.latest_date }}
+          base: main
+          title: "Update data to ${{ needs.check-latest.outputs.latest_date }}"
+          body: "Automated data update from Geofabrik."
+          commit-message: "Update data to version ${{ needs.check-latest.outputs.latest_date }}"
+          force: true  # ensures PR creation even if no detected changes

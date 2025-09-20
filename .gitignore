@@ -3,7 +3,7 @@ data/*
 !data/geojson/
 data/geojson/*
 !data/geojson/*.geojson
-!data/geojson/*.pkl
+!data/geojson/*.parquet
 !data/geojson/*.txt
 
 # Ignore static files from the app
