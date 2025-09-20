@@ -87,11 +87,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y osmium-tool gdal-bin
 
-      - name: Check versions of osmium and gdal
-        run: |
-          osmium --version
-          ogr2ogr --version
-
       # Try to restore cached file first
       - name: Restore Geofabrik file
         id: geofabrik-cache
@@ -110,13 +105,13 @@ jobs:
               -o ".cache/geofabrik/belgium-latest.osm.pbf"
           echo "[INFO] Download complete"
 
-      # Save the newly downloaded file to the cache
-      - name: Save Geofabrik file to cache
-        if: steps.geofabrik-cache.outputs.cache-hit != 'true'
-        uses: actions/cache@v4
-        with:
-          path: .cache/geofabrik/belgium-latest.osm.pbf
-          key: belgium-${{ needs.check-latest.outputs.latest_date }}
+      # # Save the newly downloaded file to the cache
+      # - name: Save Geofabrik file to cache
+      #   if: steps.geofabrik-cache.outputs.cache-hit != 'true'
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: .cache/geofabrik/belgium-latest.osm.pbf
+      #     key: belgium-${{ needs.check-latest.outputs.latest_date }}
 
       # Run preprocessing script
       - name: Run Bash preprocessing
