@@ -14,6 +14,9 @@ on:
   # schedule:
   #   - cron: '0 2 * * 1' # weekly
 
+permissions:
+  contents: write
+
 jobs:
   check-latest:
     runs-on: ubuntu-latest
