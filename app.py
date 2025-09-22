@@ -1,16 +1,12 @@
 from shared.common import *
 from shared.geoprocessing import *
-from shared.download import *
-
-# Ensure data and caches
-parquet_paths = ensure_data()
 
 # Ensure static folder exists
 os.makedirs(RES_FOLDER, exist_ok=True)
 
 # Load bike network GeoDataFrames (for processing)
-bike_network = gpd.read_parquet(parquet_paths["gdf_multiline_projected.geojson"])
-point_geodf = gpd.read_parquet(parquet_paths["gdf_point_projected.geojson"])
+bike_network = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
+point_geodf = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
 
 # Load bike network GeoJSON lines (for mapping)
 with open(network_geojson , "r") as f:
