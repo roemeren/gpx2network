@@ -5,8 +5,8 @@ from shared.geoprocessing import *
 os.makedirs(RES_FOLDER, exist_ok=True)
 
 # Load bike network GeoDataFrames (for processing)
-bike_network = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
-point_geodf = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
+bike_network_seg = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
+bike_network_node = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
 
 # Load bike network GeoJSON lines (for mapping)
 with open(network_geojson , "r") as f:
@@ -310,8 +310,8 @@ def process_zip(_, filename):
     zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
 
     # Call geoprocessing function
-    all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network,
-                                              point_geodf)
+    all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network_seg,
+                                              bike_network_node)
     
     # Add segment lengths in km
     all_segments["length_km"] = all_segments.geometry.length / 1000.0
@@ -354,6 +354,9 @@ def process_zip(_, filename):
     return (
         f"Currently loaded into app: {filename}",
         {
+            # Note: storing the full GeoJSON in the Store is fine here,
+            # since the datasets are only a few MBs — lightweight enough
+            # for both browser transfer and in-memory conversion.
             "segments": geojson_lines, 
             "nodes": geojson_points,
         },
