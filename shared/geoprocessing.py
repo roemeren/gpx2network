@@ -84,52 +84,20 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
         overlap_percentage=bike_segments_matched.apply(calculate_overlap, axis=1))
 
     filtered_segments = bike_segments_matched[bike_segments_matched['overlap_percentage'] 
-                                              >= intersect_threshold]
+                                              >= intersect_threshold].copy()
 
     if filtered_segments.empty:
         print(f"Warning ({gpx_name}): matched segments found, but none exceeded the overlap threshold ({intersect_threshold:.0%}), skipping.")
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()  # Return empty GeoDataFrames
 
     # Step 4: Extract unique nodes from the matched segments
-    filtered_segments = filtered_segments.assign(
-        node_from=filtered_segments['ref'].str.split('-', expand=True)[0],
-        node_to=filtered_segments['ref'].str.split('-', expand=True)[1]
-    )
-    unique_nodes = set(filtered_segments["node_from"].tolist() + 
-                       filtered_segments["node_to"].tolist())
+    unique_nodes = set(filtered_segments["osm_id_from"].tolist() + 
+                       filtered_segments["osm_id_to"].tolist())
     
     # Step 5: Filter point GeoDataFrame (bike nodes) based on unique nodes from GPX match
-    point_geodf_filtered = point_geodf[point_geodf['rcn_ref'].isin(unique_nodes)]
-    point_geodf_filtered_buffered = point_geodf_filtered.copy()
-    point_geodf_filtered_buffered['geometry'] = point_geodf_filtered_buffered['geometry'].buffer(buffer_distance)
-    combined_polylines = filtered_segments.geometry.union_all()
-    intersecting_indices = point_geodf_filtered_buffered[point_geodf_filtered_buffered.intersects(combined_polylines)].index
-    matched_nodes_all = point_geodf_filtered.loc[intersecting_indices]
-    matched_nodes = matched_nodes_all[matched_nodes_all['rcn_ref'].isin(unique_nodes)]
+    matched_nodes = point_geodf[point_geodf['osm_id'].isin(unique_nodes)].copy()
 
-    # Step 6: Add OSM node IDs for the matched segment endpoints (minimum osm_id)
-    osm_from = []
-    osm_to = []
-    for _, seg in filtered_segments.iterrows():
-        from_match = matched_nodes[matched_nodes['rcn_ref'] == seg['node_from']]
-        to_match = matched_nodes[matched_nodes['rcn_ref'] == seg['node_to']]
-
-        if from_match.empty:
-            print(f"Warning ({gpx_name}): no matched node found for node_from '{seg['node_from']}' in segment {seg['ref']}")
-            osm_from.append(None)
-        else:
-            osm_from.append(from_match.loc[from_match['osm_id'].idxmin(), 'osm_id'])
-        
-        if to_match.empty:
-            print(f"Warning ({gpx_name}): no matched node found for node_to '{seg['node_to']}' in segment {seg['ref']}")
-            osm_to.append(None)
-        else:
-            osm_to.append(to_match.loc[to_match['osm_id'].idxmin(), 'osm_id'])
-
-    filtered_segments = filtered_segments.assign(osm_id_from=osm_from,
-                                                 osm_id_to=osm_to)
-
-    # Step 7: Add GPX metadata
+    # Step 6: Add GPX metadata
     filtered_segments["gpx_name"] = gpx_name
     filtered_segments["gpx_date"] = gpx_time
     filtered_segments["tooltip"] = 'segment <b style="font-size: 14px;">' + filtered_segments["ref"] + '</b><br><i style="font-size: 11px;color:#555555;">more info here</i>'
@@ -137,7 +105,7 @@ def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     matched_nodes["gpx_date"] = gpx_time
     matched_nodes["tooltip"] = 'node <b style="font-size: 14px;">' + matched_nodes["rcn_ref"] + '</b><br><i style="font-size: 11px;color:#555555;">more info here</i>'
     
-    # Step 8: Filter matched_nodes to only those actually used in this GPX file
+    # Step 7: Filter matched_nodes to only those actually used in this GPX file
     used_nodes = pd.concat([
         filtered_segments[['gpx_name', 'osm_id_from']].rename(columns={'osm_id_from': 'osm_id'}),
         filtered_segments[['gpx_name', 'osm_id_to']].rename(columns={'osm_id_to': 'osm_id'})
