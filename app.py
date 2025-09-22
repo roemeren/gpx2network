@@ -8,8 +8,8 @@ os.makedirs(RES_FOLDER, exist_ok=True)
 bike_network_seg = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
 bike_network_node = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
 
-# Load bike network GeoJSON lines (for mapping)
-with open(network_geojson , "r") as f:
+# Load simplified bike network GeoJSON lines (for mapping)
+with open(multiline_geojson_simplified , "r") as f:
    geojson_network = json.load(f)
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])

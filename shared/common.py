@@ -46,7 +46,7 @@ progress_state = {
     "btn-process-disabled": False,
     "btn-download-disabled": False
 }
-network_geojson = 'data/intermediate/gdf_multiline_simplified.geojson'
+multiline_geojson_simplified = 'data/geojson/gdf_multiline_simplified.geojson'
 color_match = '#f39c12'
 color_network = '#7f8c8d'
 color_processing = '#343a40'

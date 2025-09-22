@@ -114,7 +114,7 @@ def simplify_geojson(input_path: str, tolerance: float = 0.0001):
         gpd.GeoDataFrame: The simplified GeoDataFrame.
 
     Example:
-        simplified_gdf = simplify_geojson("data/intermediate/gdf_multiline.geojson")
+        simplified_gdf = simplify_geojson("data/geojson/gdf_multiline.geojson")
         print("Simplified file saved.")
     """
     # Simple string manipulation to get output path
