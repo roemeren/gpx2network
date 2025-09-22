@@ -467,8 +467,8 @@ def filter_data(store, start_date, end_date):
     )
 
     # -- Aggregate nodes --
-    gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
-    agg_nodes = gdf_nodes.groupby(["rcn_ref", "osm_id"]).agg(
+    gdf_nodes_filtered["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
+    agg_nodes = gdf_nodes_filtered.groupby(["rcn_ref", "osm_id"]).agg(
         count_gpx=("gpx_date", "nunique"),
         first_date=("gpx_date", "min"),
         last_date=("gpx_date", "max"),
