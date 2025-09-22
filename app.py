@@ -72,7 +72,7 @@ app.layout = dbc.Container(
                         id="download-container"
                     ),
                     # hidden polling interval
-                    dcc.Interval(id="progress-poller", interval=500, disabled=True),
+                    dcc.Interval(id="progress-poller", interval=2000, disabled=True),
                     dcc.Store(id="dummy-store"),
                     # store matched segments and nodes
                     dcc.Store(id="geojson-store-full", data={}),
