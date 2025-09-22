@@ -401,6 +401,16 @@ def filter_data(store, start_date, end_date):
     gdf_segments_filtered = gdf_segments.loc[seg_mask]
     gdf_nodes_filtered = gdf_nodes.loc[node_mask]
 
+    # Helper function for building tooltip
+    def build_tooltip(label, kpi_dict):
+        tooltip_lines = [f'{label}']  # first line + blank line
+        for kpi_name, kpi_value in kpi_dict.items():
+            tooltip_lines.append(
+                f'<span style="color: #999; font-size: 11px;">{kpi_name}: </span>'
+                f'<b style="color: #000; font-size: 11px;">{kpi_value}</b>'
+            )
+        return "<br>".join(tooltip_lines)
+
     # -- Aggregate segments --
     gdf_segments_filtered["gpx_date"] = pd.to_datetime(gdf_segments_filtered["gpx_date"])
     agg_seg = gdf_segments_filtered.groupby((["ref", "osm_id", "osm_id_from", "osm_id_to"])).agg(
@@ -409,8 +419,7 @@ def filter_data(store, start_date, end_date):
         max_overlap_percentage=("overlap_percentage", "max"),
         first_date=("gpx_date", "min"),
         last_date=("gpx_date", "max"),
-        # preserve mapping info
-        tooltip=("tooltip", "first"),
+        # preserve geometry
         geometry=("geometry", "first")
     ).reset_index()
     agg_seg = gpd.GeoDataFrame(agg_seg, geometry="geometry", crs=gdf_segments_filtered.crs)
@@ -422,14 +431,27 @@ def filter_data(store, start_date, end_date):
     agg_seg["last_date"] = agg_seg["last_date"].dt.strftime("%Y-%m-%d")
     agg_seg = agg_seg.sort_values("count_gpx", ascending=False)
 
+    # Add tooltip
+    agg_seg["tooltip"] = agg_seg.apply(
+        lambda row: build_tooltip(
+            f'segment <b style="font-size: 14px;">{row["ref"]}</b>',
+            {
+                "Visits (GPX)": row["count_gpx"],
+                "First visit": row["first_date"],
+                "Last visit": row["last_date"],
+                "Best match (%)": f'{100*row["max_overlap_percentage"]:.0f}%'
+            }
+        ),
+        axis=1
+    )
+
     # -- Aggregate nodes --
     gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
     agg_nodes = gdf_nodes.groupby(["rcn_ref", "osm_id"]).agg(
         count_gpx=("gpx_date", "nunique"),
         first_date=("gpx_date", "min"),
         last_date=("gpx_date", "max"),
-        # preserve mapping info
-        tooltip=("tooltip", "first"),
+        # preserve geometry
         geometry=("geometry", "first")
     ).reset_index()
     agg_nodes = gpd.GeoDataFrame(agg_nodes, geometry="geometry", crs=gdf_nodes_filtered.crs)
@@ -438,6 +460,19 @@ def filter_data(store, start_date, end_date):
     agg_nodes["first_date"] = agg_nodes["first_date"].dt.strftime("%Y-%m-%d")
     agg_nodes["last_date"] = agg_nodes["last_date"].dt.strftime("%Y-%m-%d")
     agg_nodes = agg_nodes.sort_values("count_gpx", ascending=False)
+
+    # Add tooltip
+    agg_nodes["tooltip"] = agg_nodes.apply(
+        lambda row: build_tooltip(
+            f'node <b style="font-size: 14px;">{row["rcn_ref"]}</b>',
+            {
+                "Visits (GPX)": row["count_gpx"],
+                "First visit": row["first_date"],
+                "Last visit": row["last_date"],
+            }
+        ),
+        axis=1
+    )
 
     # Calculate KPIs
     total_segments = len(agg_seg)
