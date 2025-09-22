@@ -75,7 +75,7 @@ app.layout = dbc.Container(
                     dcc.Store(id="dummy-store"),
                     # store matched segments and nodes
                     dcc.Store(id="geojson-store-full", data={}),
-                    # store filtered matched segments and nodes
+                    # store filtered & aggregated matched segments and nodes
                     dcc.Store(id="geojson-store-filtered", data={})
                 ],
                 width=3
@@ -312,9 +312,6 @@ def process_zip(_, filename):
     # Call geoprocessing function
     all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network_seg,
                                               bike_network_node)
-    
-    # Add segment lengths in km
-    all_segments["length_km"] = all_segments.geometry.length / 1000.0
 
     # Convert back to WGS84 for mapping
     all_segments = all_segments.to_crs(epsg=4326) if not all_segments.empty else gpd.GeoDataFrame()
@@ -404,23 +401,56 @@ def filter_data(store, start_date, end_date):
     gdf_segments_filtered = gdf_segments.loc[seg_mask]
     gdf_nodes_filtered = gdf_nodes.loc[node_mask]
 
-    total_segments = gdf_segments_filtered["osm_id"].nunique()
-    total_nodes = gdf_nodes_filtered["osm_id"].nunique()
-    total_length = round(
-        gdf_segments_filtered.drop_duplicates("osm_id")["length_km"].sum(), 2
-    )
+    # -- Aggregate segments --
+    gdf_segments_filtered["gpx_date"] = pd.to_datetime(gdf_segments_filtered["gpx_date"])
+    agg_seg = gdf_segments_filtered.groupby((["ref", "osm_id", "osm_id_from", "osm_id_to"])).agg(
+        length_km=("length_km", "max"),
+        count_gpx=("gpx_name", "nunique"),
+        max_overlap_percentage=("overlap_percentage", "max"),
+        first_date=("gpx_date", "min"),
+        last_date=("gpx_date", "max"),
+        # preserve mapping info
+        tooltip=("tooltip", "first"),
+        geometry=("geometry", "first")
+    ).reset_index()
+    agg_seg = gpd.GeoDataFrame(agg_seg, geometry="geometry", crs=gdf_segments_filtered.crs)
 
-    # Keep small version of nodes layer for mapping
-    gdf_nodes_unique = gdf_nodes_filtered[["osm_id", "rcn_ref", "tooltip", "geometry"]].drop_duplicates()
+    # Apply formatting and sort result
+    agg_seg["length_km"] = agg_seg["length_km"].round(2)
+    agg_seg["max_overlap_percentage"] = agg_seg["max_overlap_percentage"].round(2)
+    agg_seg["first_date"] = agg_seg["first_date"].dt.strftime("%Y-%m-%d")
+    agg_seg["last_date"] = agg_seg["last_date"].dt.strftime("%Y-%m-%d")
+    agg_seg = agg_seg.sort_values("count_gpx", ascending=False)
+
+    # -- Aggregate nodes --
+    gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
+    agg_nodes = gdf_nodes.groupby(["rcn_ref", "osm_id"]).agg(
+        count_gpx=("gpx_date", "nunique"),
+        first_date=("gpx_date", "min"),
+        last_date=("gpx_date", "max"),
+        # preserve mapping info
+        tooltip=("tooltip", "first"),
+        geometry=("geometry", "first")
+    ).reset_index()
+    agg_nodes = gpd.GeoDataFrame(agg_nodes, geometry="geometry", crs=gdf_nodes_filtered.crs)
+
+    # Apply formatting and sort result
+    agg_nodes["first_date"] = agg_nodes["first_date"].dt.strftime("%Y-%m-%d")
+    agg_nodes["last_date"] = agg_nodes["last_date"].dt.strftime("%Y-%m-%d")
+    agg_nodes = agg_nodes.sort_values("count_gpx", ascending=False)
+
+    # Calculate KPIs
+    total_segments = len(agg_seg)
+    total_nodes = len(agg_nodes)
+    total_length = round(agg_seg["length_km"].sum(), 2)
 
     return (
         total_segments,
         total_nodes,
         total_length,
         {
-            "segments": gdf_segments_filtered.__geo_interface__,
-            "nodes": gdf_nodes_filtered.__geo_interface__,
-            "nodes_unique": gdf_nodes_unique.__geo_interface__
+            "segments": agg_seg.__geo_interface__,
+            "nodes": agg_nodes.__geo_interface__
         }
     )
 
@@ -454,7 +484,7 @@ def update_nodes(filtered_data, cluster_radius):
     """Render bike nodes
 
     Args:
-        filtered_data (dict): Filtered GeoJSON data.
+        filtered_data (dict): Filtered and aggregated GeoJSON data.
 
     Returns:
         dl.GeoJSON or None: Node layer component.
@@ -463,7 +493,7 @@ def update_nodes(filtered_data, cluster_radius):
         return None
     else:
         return dl.GeoJSON(
-            data=filtered_data["nodes_unique"],
+            data=filtered_data["nodes"],
             cluster=True,
             zoomToBoundsOnClick=True,
             superClusterOptions={"radius": cluster_radius}
@@ -491,48 +521,18 @@ def update_aggregated_tables(filtered_data):
     """
     if not filtered_data:
         return [], [], [], []
+    
+    agg_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
+    agg_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
 
-    # --- Segments ---
-    if "segments" in filtered_data and filtered_data["segments"]["features"]:
-        gdf_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
-        # Ensure correct types
-        gdf_seg["gpx_date"] = pd.to_datetime(gdf_seg["gpx_date"])
-        agg_seg = gdf_seg.groupby((["ref", "osm_id"])).agg(
-            length_km=("length_km", "max"),
-            count_gpx=("gpx_name", "nunique"),
-            max_overlap_percentage=("overlap_percentage", "max"),
-            first_date=("gpx_date", "min"),
-            last_date=("gpx_date", "max")
-        ).reset_index()
-        # Apply formatting
-        agg_seg["length_km"] = agg_seg["length_km"].round(2)
-        agg_seg["max_overlap_percentage"] = agg_seg["max_overlap_percentage"].round(2)
-        agg_seg["first_date"] = agg_seg["first_date"].dt.strftime("%Y-%m-%d")
-        agg_seg["last_date"] = agg_seg["last_date"].dt.strftime("%Y-%m-%d")
-        # Sort result
-        agg_seg = agg_seg.sort_values("count_gpx", ascending=False)
-        seg_columns = [{"name": c, "id": c} for c in agg_seg.columns]
-        seg_data = agg_seg.to_dict("records")
-    else:
-        seg_columns, seg_data = [], []
+    # remove the geometry
+    agg_seg = agg_seg.drop(columns="geometry")
+    agg_nodes = agg_nodes.drop(columns="geometry")
 
-    # --- Nodes ---
-    if "nodes" in filtered_data and filtered_data["nodes"]["features"]:
-        gdf_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
-        gdf_nodes["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
-        agg_nodes = gdf_nodes.groupby(["rcn_ref", "osm_id"]).agg(
-            count_gpx=("gpx_date", "nunique"),
-            first_date=("gpx_date", "min"),
-            last_date=("gpx_date", "max")
-        ).reset_index()
-        # Sort & apply formatting
-        agg_nodes["first_date"] = agg_nodes["first_date"].dt.strftime("%Y-%m-%d")
-        agg_nodes["last_date"] = agg_nodes["last_date"].dt.strftime("%Y-%m-%d")
-        agg_nodes = agg_nodes.sort_values("count_gpx", ascending=False)
-        node_columns = [{"name": c, "id": c} for c in agg_nodes.columns]
-        node_data = agg_nodes.to_dict("records")
-    else:
-        node_columns, node_data = [], []
+    seg_columns = [{"name": c, "id": c} for c in agg_seg.columns]
+    seg_data = agg_seg.to_dict("records")
+    node_columns = [{"name": c, "id": c} for c in agg_nodes.columns]
+    node_data = agg_nodes.to_dict("records")
 
     return seg_data, seg_columns, node_data, node_columns
 
@@ -669,7 +669,7 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     Args:
         selected_node_rows (list[int]): Indices of selected rows in the nodes table.
         node_data (list[dict]): Data from the aggregated nodes table.
-        filtered_data (dict): Filtered GeoJSON data containing segments.
+        filtered_data (dict): Filtered and aggregated GeoJSON data containing segments.
 
     Returns:
         dl.GeoJSON or None: Highlighted GeoJSON layer if matching segments exist,
