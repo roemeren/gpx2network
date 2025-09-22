@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - 'v*.*.*'  # This pattern matches tags like 'v1.0.3'
+  workflow_dispatch:   # Allow manual trigger
 
 jobs:
   deploy-dash:
