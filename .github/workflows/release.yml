@@ -1,0 +1,26 @@
+name: Deploy Application
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # This pattern matches tags like 'v1.0.3'
+
+jobs:
+  deploy-dash:
+    runs-on: ubuntu-latest  # The job will run on the latest Ubuntu runner
+
+    environment: 
+      name: production  # Contains environment-specific config and secrets
+      url: https://gpx-bike-node-matcher.onrender.com  # Link to the deployed app 
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4  # Check out the code from the repository
+
+    - name: Deploy to Render
+      run: |
+        set -e
+        curl -X POST "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
+        -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
+        -H "Content-Type: application/json" \
+        -d '{"branch": "main"}'
