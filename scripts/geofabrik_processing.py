@@ -225,6 +225,9 @@ def process_osm_data(tqdm_params):
                             buffer_distance, node_width, tqdm_params)
     print("[INFO] Enrichment completed.")
 
+    # Add segment length
+    gdf_multiline["length_km"] = gdf_multiline.geometry.length / 1000.0
+
     # Convert the enriched result back to WGS84
     print("[INFO] Converting back to WGS84 (EPSG:4326)...")
     gdf_multiline = gdf_multiline_projected.to_crs(epsg=4326)
