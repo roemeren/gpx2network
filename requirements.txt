@@ -11,3 +11,4 @@ dash-table==5.0.0
 requests==2.32.3
 tqdm==4.67.1
 pyarrow==21.0.0
+gunicorn==23.0.0
