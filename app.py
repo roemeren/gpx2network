@@ -12,9 +12,6 @@ point_geodf = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"
 with open(network_geojson , "r") as f:
    geojson_network = json.load(f)
 
-# Other initialization
-geojson_points = {}
-
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
 # ---------- Layout ----------
@@ -299,7 +296,7 @@ def save_uploaded_file(contents, filename):
     State("upload-zip", "filename"),
     prevent_initial_call=True
 )
-def process_zip(n_clicks, filename):
+def process_zip(_, filename):
     # Do nothing if no file is selected
     if not filename:
         print("No file selected!")
