@@ -17,5 +17,5 @@ COPY . .
 # Expose Dash port (Render overrides $PORT)
 EXPOSE 8050
 
-# Start Dash via Gunicorn using Render's dynamic port
-CMD ["gunicorn", "app:server", "--bind", "0.0.0.0:$PORT"]
+# Start Dash via Gunicorn
+CMD ["gunicorn", "app:server", "--bind", "0.0.0.0:8050"]

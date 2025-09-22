@@ -13,6 +13,7 @@ with open(multiline_geojson_simplified , "r") as f:
    geojson_network = json.load(f)
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+server = app.server
 
 # ---------- Layout ----------
 app.layout = dbc.Container(
@@ -755,4 +756,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
