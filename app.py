@@ -88,15 +88,27 @@ app.layout = dbc.Container(
                     dbc.Row([
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H5("No. Matched Nodes"),
-                            html.H2(id="kpi-totnodes", children="–")
+                            html.H2(id="kpi-totnodes", children="–"),
+                            html.Div(
+                                f"out of {len(bike_network_node)}",
+                                style={"fontSize": "12px", "color": "#666", "marginTop": "2px"}
+                            )
                         ])), width=4),
                         dbc.Col(dbc.Card(dbc.CardBody([
                             html.H5("No. Matched Segments"),
-                            html.H2(id="kpi-totsegments", children="–")
+                            html.H2(id="kpi-totsegments", children="–"),
+                            html.Div(
+                                f"out of {len(bike_network_seg)}",
+                                style={"fontSize": "12px", "color": "#666", "marginTop": "2px"}
+                            )
                         ])), width=4),
                         dbc.Col(dbc.Card(dbc.CardBody([
-                            html.H5("Total Segment Length (km)"),
-                            html.H2(id="kpi-totlength", children="–")
+                            html.H5("Total Matched Segment Length (km)"),
+                            html.H2(id="kpi-totlength", children="–"),
+                            html.Div(
+                                f"out of {bike_network_seg['length_km'].sum():.0f} km",
+                                style={"fontSize": "12px", "color": "#666", "marginTop": "2px"}
+                            )
                         ])), width=4),
                     ], className="mb-3"),
                     # Controls row
@@ -402,8 +414,15 @@ def filter_data(store, start_date, end_date):
     gdf_nodes_filtered = gdf_nodes.loc[node_mask]
 
     # Helper function for building tooltip
-    def build_tooltip(label, kpi_dict):
-        tooltip_lines = [f'{label}']  # first line + blank line
+    def build_tooltip(label_prefix, label_value, kpi_dict):
+        # First line: prefix in light grey, value in black and larger font
+        tooltip_lines = [
+            f'<span style="color: #999; font-size: 14px;">{label_prefix}</span>'
+            f'<span style="color: #000; font-size: 16px; font-weight: bold;">{label_value}</span>'
+            '<br>'  # simple line break for spacing
+        ]
+        
+        # KPI lines in smaller font
         for kpi_name, kpi_value in kpi_dict.items():
             tooltip_lines.append(
                 f'<span style="color: #999; font-size: 11px;">{kpi_name}: </span>'
@@ -434,11 +453,13 @@ def filter_data(store, start_date, end_date):
     # Add tooltip
     agg_seg["tooltip"] = agg_seg.apply(
         lambda row: build_tooltip(
-            f'segment <b style="font-size: 14px;">{row["ref"]}</b>',
+            "segment ",
+            row["ref"],
             {
                 "Visits (GPX)": row["count_gpx"],
                 "First visit": row["first_date"],
                 "Last visit": row["last_date"],
+                "Length (km)": f'{row["length_km"]:.1f}',
                 "Best match (%)": f'{100*row["max_overlap_percentage"]:.0f}%'
             }
         ),
@@ -464,7 +485,8 @@ def filter_data(store, start_date, end_date):
     # Add tooltip
     agg_nodes["tooltip"] = agg_nodes.apply(
         lambda row: build_tooltip(
-            f'node <b style="font-size: 14px;">{row["rcn_ref"]}</b>',
+            "node ",
+            row["rcn_ref"],
             {
                 "Visits (GPX)": row["count_gpx"],
                 "First visit": row["first_date"],
