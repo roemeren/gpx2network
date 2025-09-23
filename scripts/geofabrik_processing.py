@@ -10,6 +10,7 @@ from tqdm import tqdm
 # geoprocessing
 SCRIPTS_FOLDER = "scripts"
 buffer_distance = 20  # in meters
+simplify_tolerance = 10 #  in meters (will drastically decrease memory)
 intersect_threshold = 0.75
 node_width = 3
 input_gpkg = "data/temp/rcn_output.gpkg"
@@ -224,9 +225,9 @@ def process_osm_data(tqdm_params):
                             buffer_distance, node_width, tqdm_params)
     print("[INFO] Enrichment completed.")
 
-    # Simplify geometry & add segment length
+    # Simplify geometry (with tolerance in m) & add segment length
     # Note: only keeping relevant attribute columns doesn't make much difference
-    gdf_multiline_projected['geometry'] = gdf_multiline_projected['geometry'].simplify(tolerance=0.0001, preserve_topology=True)
+    gdf_multiline_projected['geometry'] = gdf_multiline_projected['geometry'].simplify(tolerance=simplify_tolerance, preserve_topology=True)
     gdf_multiline_projected["length_km"] = gdf_multiline_projected.geometry.length / 1000.0
 
     # Convert the enriched result back to WGS84
