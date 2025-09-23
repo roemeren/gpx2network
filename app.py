@@ -1,5 +1,6 @@
 from shared.common import *
 from shared.geoprocessing import *
+import threading
 
 # Ensure static folder exists
 os.makedirs(RES_FOLDER, exist_ok=True)
@@ -46,7 +47,7 @@ app.layout = dbc.Container(
                         },
                     ),
                     html.Div(id="browse-info"),
-                    dbc.Button("Process ZIP", id="btn-process", color="primary", className="mb-2", disabled=True),
+                    dbc.Button("Process ZIP", id="btn-process", color="primary", className="mb-2", disabled=False),
                     dbc.Progress(id="progress", value=0, striped=True, animated=True, className="mb-2"),
                     html.Div(
                         id="processing-status",
@@ -280,6 +281,8 @@ app.layout = dbc.Container(
 )
 
 # ---------- Callbacks ----------
+processing_thread = None  # thread reference
+
 @app.callback(
     Output("dummy-store", "data"),
     Input("upload-zip", "contents"),
@@ -303,75 +306,84 @@ def save_uploaded_file(contents, filename):
 
 @app.callback(
     Output("load-status", "children"),
-    Output("geojson-store-full", "data"),
-    Output("download-container", "children"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
     prevent_initial_call=True
 )
 def process_zip(_, filename):
-    # Do nothing if no file is selected
     if not filename:
-        print("No file selected!")
         raise PreventUpdate
-    
-    # Initialize progress
+
+    zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
     progress_state["pct"] = 0
     progress_state["btn-process-disabled"] = True
     progress_state["btn-download-disabled"] = True
+    progress_state["processed-file"] = f"Processing {filename}..."
 
-    zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
+    def worker():
+        progress_state["running"] = True
+        all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network_seg, bike_network_node)
 
-    # Call geoprocessing function
-    all_segments, all_nodes = process_gpx_zip(zip_file_path, bike_network_seg,
-                                              bike_network_node)
+        all_segments = all_segments.to_crs(epsg=4326) if not all_segments.empty else gpd.GeoDataFrame()
+        all_nodes = all_nodes.to_crs(epsg=4326) if not all_nodes.empty else gpd.GeoDataFrame()
 
-    # Convert back to WGS84 for mapping
-    all_segments = all_segments.to_crs(epsg=4326) if not all_segments.empty else gpd.GeoDataFrame()
-    all_nodes = all_nodes.to_crs(epsg=4326) if not all_nodes.empty else gpd.GeoDataFrame()
+        segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments_wgs84.geojson")
+        nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes_wgs84.geojson")
+        all_segments.to_file(segments_file_path, driver="GeoJSON")
+        all_nodes.to_file(nodes_file_path, driver="GeoJSON")
 
-    # Save WGS84 results as GeoJSON for further use
-    segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments_wgs84.geojson")
-    nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes_wgs84.geojson")
-    all_segments.to_file(segments_file_path, driver="GeoJSON")
-    all_nodes.to_file(nodes_file_path, driver="GeoJSON")
+        results_zip = create_result_zip(segments_file_path, nodes_file_path)
+        download_href = f"/static/{os.path.relpath(results_zip, 'static').replace(os.sep, '/')}"
 
-    # Create zip of results
-    results_zip = create_result_zip(segments_file_path, nodes_file_path)
+        # Only update store when processing is done
+        progress_state["store_data"] = {
+            "segments": all_segments.__geo_interface__,
+            "nodes": all_nodes.__geo_interface__,
+            "download_href": download_href
+        }
+        progress_state["pct"] = 100
+        progress_state["btn-process-disabled"] = False
+        progress_state["btn-download-disabled"] = False
+        progress_state["processed-file"] = f"Finished processing {filename}"
+        # disable polling
+        progress_state["running"] = False
 
-    # Build a download link
-    rel_path = os.path.relpath(results_zip, start="static")
-    download_link = dbc.Button(
-        "Download Results",
-        href=f"/static/{rel_path.replace(os.sep, '/')}",
-        color="success",
-        className="mt-2",
-        external_link=True,
-        id="btn-download",
-        disabled=False
-    )
+    global processing_thread
+    processing_thread = threading.Thread(target=worker)
+    processing_thread.start()
 
-    # Read files for mapping
-    geojson_lines = all_segments.__geo_interface__
-    geojson_points = all_nodes.__geo_interface__
+    # no need to return anything, only used for triggering polling
+    return ""
 
-    # Re-enable buttons & reset progress
-    progress_state["btn-process-disabled"] = False
-    progress_state["btn-download-disabled"] = False
-    progress_state["pct"] = 0
-    progress_state["processed-file"] = ""
+@app.callback(
+    Output("progress", "value"),
+    Output("progress", "label"),
+    Output("progress-poller", "disabled"),
+    Output("processing-status", "children"),
+    Output("btn-process", "disabled"),
+    Output("btn-download", "disabled"),
+    Output("btn-download", "href"),
+    Output("btn-download", "style"),
+    Output("geojson-store-full", "data"),
+    Input("progress-poller", "n_intervals"),
+    Input("load-status", "children"),
+    prevent_initial_call=True
+)
+def update_progress(*_):
+    pct = progress_state.get("pct", 0)
+    processed_file = progress_state.get("processed-file", "")
+    btn_disabled = progress_state.get("btn-process-disabled", False)
+    btn_download_disabled = progress_state.get("btn-download-disabled", True)
+    # only stop polling when the processing thread has effectively finished
+    poller_disabled = not progress_state.get("running", True)
+    label = f"{pct}%" if pct >= 5 else ""
+    href = progress_state.get("store_data", {}).get("download_href")
+    style = {"display": "block"} if pct >= 100 else {"display": "none"}
 
-    return (
-        f"Currently loaded into app: {filename}",
-        {
-            # Note: storing the full GeoJSON in the Store is fine here,
-            # since the datasets are only a few MBs — lightweight enough
-            # for both browser transfer and in-memory conversion.
-            "segments": geojson_lines, 
-            "nodes": geojson_points,
-        },
-        download_link
-    )
+    # Only update store when ready
+    store_data = progress_state.get("store_data") if pct >= 100 else dash.no_update
+
+    return pct, label, poller_disabled, processed_file, btn_disabled, btn_download_disabled, href, style, store_data
 
 @app.callback(
     Output("kpi-totsegments", "children"),
@@ -393,7 +405,7 @@ def filter_data(store, start_date, end_date):
     Returns:
         tuple: (total_segments, total_nodes, total_length, filtered GeoJSON dict)
     """
-    if not store:
+    if not store.get("segments", {}).get("features"):
         return None, None, None, {}
 
     gdf_segments = gpd.GeoDataFrame.from_features(store["segments"]["features"])
@@ -595,36 +607,13 @@ def update_aggregated_tables(filtered_data):
     return seg_data, seg_columns, node_data, node_columns
 
 @app.callback(
-    Output("progress", "value"),
-    Output("progress", "label"),
-    Output("progress-poller", "disabled"), # required otherwise no update
-    Output("processing-status", "children"),
-    Output("btn-process", "disabled"),
-    Output("btn-download", "disabled"),
-    Input("progress-poller", "n_intervals")
-)
-def update_progress(_):
-    pct = progress_state.get("pct", 0)
-    done = False # TODO: implement temporary activation/deactivation of poller
-    processed_file = progress_state.get("processed-file", "")
-    label = f"{pct}%" if pct >= 5 else ""
-    btn_disabled = progress_state.get("btn-process-disabled", False)
-    btn_download_disabled = progress_state.get("btn-download-disabled", False)
-    return (
-        pct, 
-        label, 
-        done, 
-        processed_file, 
-        btn_disabled, 
-        btn_download_disabled
-    )
-
-@app.callback(
     Output("browse-info", "children"),
     Input("upload-zip", "contents"), # input required (also in def)
     State('upload-zip', 'filename')
 )
-def show_info(c, f):
+def show_info(_, f):
+    if f is None:
+        return "No file selected"
     return f"Selected file: {f}"
 
 @app.callback(
@@ -756,4 +745,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
