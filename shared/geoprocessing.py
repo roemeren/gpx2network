@@ -1,5 +1,5 @@
 from shared.common import *
-# import psutil # for checking memory usage (Render: max. 512 MB RAM)
+import psutil # for checking memory usage (Render: max. 512 MB RAM)
 
 def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     """
@@ -145,33 +145,35 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(zip_folder)
 
-    # Initialize empty GeoDataFrames for segments and nodes
-    all_segments = gpd.GeoDataFrame()
-    all_nodes = gpd.GeoDataFrame()
+    # Use lists instead of repeatedly concatenating GeoDataFrames
+    all_segments_list = []
+    all_nodes_list = []
 
-    # Loop through each GPX file in the unzipped folder
     gpx_files = [f for f in os.listdir(zip_folder) if f.endswith(".gpx")]
     total = len(gpx_files)
 
     for i, gpx_file in enumerate(gpx_files, start=1):
-        # process = psutil.Process(os.getpid())
-        # print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
+        process = psutil.Process(os.getpid())
+        print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
         if gpx_file.endswith(".gpx"):
             progress_state["processed-file"] = f"Processing: {gpx_file}"
-
             gpx_file_path = os.path.join(zip_folder, gpx_file)
 
             # Process each GPX file
             bike_segments, matched_nodes = process_gpx_file(gpx_file_path, bike_network, point_geodf)
 
-            # Append results to the combined GeoDataFrames
-            all_segments = gpd.GeoDataFrame(pd.concat([all_segments, bike_segments], ignore_index=True))
-            all_nodes = gpd.GeoDataFrame(pd.concat([all_nodes, matched_nodes], ignore_index=True))
+            # Append to lists (no repeated copying)
+            all_segments_list.append(bike_segments)
+            all_nodes_list.append(matched_nodes)
 
             # Update progress for polling
             pct = round(i / total * 100)
             progress_state["pct"] = pct
-    
+
+    # Concatenate once at the end
+    all_segments = gpd.GeoDataFrame(pd.concat(all_segments_list, ignore_index=True))
+    all_nodes = gpd.GeoDataFrame(pd.concat(all_nodes_list, ignore_index=True))
+
     print("Processing done!")
 
     # Temporary print: show all segments where osm_id_from or osm_id_to is None
