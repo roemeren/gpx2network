@@ -108,7 +108,7 @@ jobs:
       # Run preprocessing script
       - name: Run Bash preprocessing
         run: |
-          bash scripts/geofabrik_preprocessing.sh ${{ needs.check-latest.outputs.latest_date }} .cache/geofabrik/belgium-latest.osm.pbf
+          bash scripts/geofabrik_preprocessing.sh ${{ needs.check-latest.outputs.latest_date }} data/raw/belgium-latest.osm.pbf
         
       # Run processing script
       - name: Run Python processing
