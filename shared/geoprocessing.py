@@ -1,5 +1,12 @@
 from shared.common import *
-# import psutil # for checking memory usage (Render: max. 512 MB RAM)
+from shapely.geometry import Point, LineString, MultiLineString
+import shutil
+import zipfile
+import gpxpy
+import psutil
+
+buffer_distance = 20  # in meters
+intersect_threshold = 0.75
 
 def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     """

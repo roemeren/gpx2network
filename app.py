@@ -1,20 +1,57 @@
 from shared.common import *
-from shared.geoprocessing import *
+import json
+import base64
 import threading
+import datetime
+import psutil #temporary
+
+process = psutil.Process(os.getpid())
+print(f"Memory usage after base imports: {process.memory_info().rss / 1024**2:.2f} MB")
+
+from shared.geoprocessing import *
+print(f"Memory usage after geoprocessing imports: {process.memory_info().rss / 1024**2:.2f} MB")
+
+from dash import no_update, Dash, html, dcc, Output, Input, State, dash_table
+import dash_bootstrap_components as dbc
+import dash_leaflet as dl
+from dash.exceptions import PreventUpdate
+
+print(f"Memory usage after Dash imports: {process.memory_info().rss / 1024**2:.2f} MB")
+
+color_match = '#f39c12'
+color_network = '#7f8c8d'
+color_processing = '#343a40'
+color_highlight_segment = "red"
+color_highlight_node = "purple"
+min_zoom_points = 11
+initial_center =  [50.65, 4.45]
+initial_zoom = 8
+date_picker_min_date = datetime.date(2010, 1, 1)
+date_picker_max_date = datetime.date.today()
+
+print(f"Memory usage after constants: {process.memory_info().rss / 1024**2:.2f} MB")
 
 # Ensure static folder exists
 os.makedirs(RES_FOLDER, exist_ok=True)
+
+print(f"Memory usage after making RES_FOLDER: {process.memory_info().rss / 1024**2:.2f} MB")
 
 # Load bike network GeoDataFrames (for processing)
 bike_network_seg = gpd.read_parquet(multiline_proj_parquet)
 bike_network_node = gpd.read_parquet(point_proj_parquet)
 
+print(f"Memory usage after loading bike network parquet: {process.memory_info().rss / 1024**2:.2f} MB")
+
 # Load simplified bike network GeoJSON lines (for mapping)
 with open(multiline_geojson , "r") as f:
    geojson_network = json.load(f)
 
-app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+print(f"Memory usage after loading bike network GeoJSON: {process.memory_info().rss / 1024**2:.2f} MB")
+
+app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server
+
+print(f"Memory usage after initializing Dash: {process.memory_info().rss / 1024**2:.2f} MB")
 
 # ---------- Layout ----------
 app.layout = dbc.Container(
@@ -381,7 +418,7 @@ def update_progress(*_):
     style = {"display": "block"} if pct >= 100 else {"display": "none"}
 
     # Only update store when ready
-    store_data = progress_state.get("store_data") if pct >= 100 else dash.no_update
+    store_data = progress_state.get("store_data") if pct >= 100 else no_update
 
     return pct, label, poller_disabled, processed_file, btn_disabled, btn_download_disabled, href, style, store_data
 
@@ -745,4 +782,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
