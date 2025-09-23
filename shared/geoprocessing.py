@@ -152,9 +152,10 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     gpx_files = [f for f in os.listdir(zip_folder) if f.endswith(".gpx")]
     total = len(gpx_files)
 
+    #process = psutil.Process(os.getpid())
+
     for i, gpx_file in enumerate(gpx_files, start=1):
-        process = psutil.Process(os.getpid())
-        print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
+        #print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
         if gpx_file.endswith(".gpx"):
             progress_state["processed-file"] = f"Processing: {gpx_file}"
             gpx_file_path = os.path.join(zip_folder, gpx_file)
