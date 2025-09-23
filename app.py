@@ -6,11 +6,11 @@ import threading
 os.makedirs(RES_FOLDER, exist_ok=True)
 
 # Load bike network GeoDataFrames (for processing)
-bike_network_seg = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
-bike_network_node = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
+bike_network_seg = gpd.read_parquet(multiline_proj_parquet)
+bike_network_node = gpd.read_parquet(point_proj_parquet)
 
 # Load simplified bike network GeoJSON lines (for mapping)
-with open(multiline_geojson_simplified , "r") as f:
+with open(multiline_geojson , "r") as f:
    geojson_network = json.load(f)
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
@@ -745,4 +745,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()

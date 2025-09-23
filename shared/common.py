@@ -36,8 +36,8 @@ node_width = 3
 input_gpkg = "data/temp/rcn_output.gpkg"
 multiline_geojson = 'data/geojson/gdf_multiline.geojson'
 point_geojson = 'data/geojson/gdf_point.geojson'
-multiline_geojson_proj = 'data/geojson/gdf_multiline_projected.geojson'
-point_geojson_proj = 'data/geojson/gdf_point_projected.geojson'
+multiline_proj_parquet = 'data/geojson/gdf_multiline_projected.parquet'
+point_proj_parquet = 'data/geojson/gdf_point_projected.parquet'
 
 # application
 progress_state = {
@@ -46,7 +46,6 @@ progress_state = {
     "btn-process-disabled": False,
     "btn-download-disabled": False
 }
-multiline_geojson_simplified = 'data/geojson/gdf_multiline_simplified.geojson'
 color_match = '#f39c12'
 color_network = '#7f8c8d'
 color_processing = '#343a40'

@@ -5,7 +5,6 @@ import platform
 import subprocess
 from pathlib import Path
 from scripts.geofabrik_date import *
-from shared.conversion import simplify_geojson
 from tqdm import tqdm
 
 # geoprocessing
@@ -184,7 +183,7 @@ def process_osm_data(tqdm_params):
     # Download Belgium OSM, extract rcn data, create GeoPackage and keep key files
     if current_os == "Windows":
         # Get absolute path to batch script to avoid relative path issues on Windows
-        script_path = Path(os.path.join(SCRIPTS_FOLDER, "process_osm.bat")).resolve()
+        script_path = Path(os.path.join(SCRIPTS_FOLDER, "geofabrik_preprocessing.bat")).resolve()
         print(f"[INFO] Using script: {script_path}")
         # assumption: running locally
         subprocess.run(
@@ -225,7 +224,9 @@ def process_osm_data(tqdm_params):
                             buffer_distance, node_width, tqdm_params)
     print("[INFO] Enrichment completed.")
 
-    # Add segment length
+    # Simplify geometry & add segment length
+    # Note: only keeping relevant attribute columns doesn't make much difference
+    gdf_multiline_projected['geometry'] = gdf_multiline_projected['geometry'].simplify(tolerance=0.0001, preserve_topology=True)
     gdf_multiline_projected["length_km"] = gdf_multiline_projected.geometry.length / 1000.0
 
     # Convert the enriched result back to WGS84
@@ -244,9 +245,6 @@ def process_osm_data(tqdm_params):
     gdf_point_projected.to_file(point_geojson_proj, driver='GeoJSON')
     gdf_point.to_parquet(point_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
     gdf_point_projected.to_parquet(point_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
-    
-    # Create and save simplified version of segments for mapping
-    simplify_geojson(multiline_geojson)
 
     print("[INFO] All outputs saved successfully.")
 

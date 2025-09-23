@@ -21,8 +21,8 @@ IF NOT EXIST "%TEMP_DIR%" (
 )
 
 REM --- Download OSM PBF if it does not exist ---
-IF EXIST "%FILENAME%" (
-    echo [INFO] %FILENAME% already exists, skipping download
+IF EXIST ".cache\%FILENAME%" (
+    echo [INFO] .cache\%FILENAME% already exists, skipping download
 ) ELSE (
     echo [INFO] Downloading %FILENAME%
     curl -s -o ".cache\%FILENAME%" "https://download.geofabrik.de/europe/%FILENAME%"
