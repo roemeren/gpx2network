@@ -235,6 +235,10 @@ def process_osm_data(tqdm_params):
     gdf_multiline = gdf_multiline_projected.to_crs(epsg=4326)
     gdf_point = gdf_point_projected.to_crs(epsg=4326)
 
+    # Dissolve all geometries in a GeoDataFrame into one combined geometry
+    merged = gdf_multiline.geometry.union_all()
+    gdf_multiline = gpd.GeoDataFrame(geometry=[merged], crs=gdf_multiline.crs)
+
     # Save the outputs as GeoJSON and parquet for use in the app
     # compared to shapefiles there is no truncation of column names but takes longer
     print("[INFO] Saving outputs...")
