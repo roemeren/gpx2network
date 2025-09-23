@@ -6,12 +6,12 @@ import threading
 os.makedirs(RES_FOLDER, exist_ok=True)
 
 # Load bike network GeoDataFrames (for processing)
-bike_network_seg = gpd.read_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"))
-bike_network_node = gpd.read_parquet(point_geojson_proj.replace(".geojson", ".parquet"))
+bike_network_seg = gpd.read_parquet(multiline_proj_parquet)
+bike_network_node = gpd.read_parquet(point_proj_parquet)
 
 # Load simplified bike network GeoJSON lines (for mapping)
-with open(multiline_geojson_simplified , "r") as f:
-   geojson_network = json.load(f)
+bike_network_seg_wgs84 = bike_network_seg.to_crs("EPSG:4326")
+geojson_network = bike_network_seg_wgs84.__geo_interface__
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 server = app.server

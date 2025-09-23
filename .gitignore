@@ -1,10 +1,10 @@
 # Ignore all data except geojson/parquet/txt files in data/geojson tracked by LFS
 data/*
-!data/geojson/
-data/geojson/*
-!data/geojson/*.geojson
-!data/geojson/*.parquet
-!data/geojson/*.txt
+!data/network/
+data/network/*
+!data/network/*.geojson
+!data/network/*.parquet
+!data/network/*.txt
 
 # Ignore static files from the app
 static/
