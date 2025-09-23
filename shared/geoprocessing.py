@@ -1,4 +1,5 @@
 from shared.common import *
+# import psutil # for checking memory usage (Render: max. 512 MB RAM)
 
 def process_gpx_file(gpx_file_path, bike_network, point_geodf):
     """
@@ -153,6 +154,8 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     total = len(gpx_files)
 
     for i, gpx_file in enumerate(gpx_files, start=1):
+        # process = psutil.Process(os.getpid())
+        # print(f"Memory usage: {process.memory_info().rss / 1024**2:.2f} MB")
         if gpx_file.endswith(".gpx"):
             progress_state["processed-file"] = f"Processing: {gpx_file}"
 

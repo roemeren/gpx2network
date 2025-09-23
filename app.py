@@ -405,7 +405,7 @@ def filter_data(store, start_date, end_date):
     Returns:
         tuple: (total_segments, total_nodes, total_length, filtered GeoJSON dict)
     """
-    if not store.get("segments", {}).get("features"):
+    if not store or not store.get("segments", {}).get("features"):
         return None, None, None, {}
 
     gdf_segments = gpd.GeoDataFrame.from_features(store["segments"]["features"])
