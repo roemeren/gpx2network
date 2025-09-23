@@ -5,13 +5,13 @@ import os
 
 # ---------- Constants ----------
 # files and folders
-UPLOAD_FOLDER = "data/uploads"
+UPLOAD_FOLDER = "uploads"
 RES_FOLDER = "static" # folder for output files, automatically served by Dash for downloads
 
 # geoprocessing
-multiline_geojson = 'data/geojson/gdf_multiline.geojson'
-multiline_proj_parquet = 'data/geojson/gdf_multiline_projected.parquet'
-point_proj_parquet = 'data/geojson/gdf_point_projected.parquet'
+multiline_geojson = 'data/processed/gdf_multiline.geojson'
+multiline_parquet_proj = 'data/processed/gdf_multiline_projected.parquet'
+point_parquet_proj = 'data/processed/gdf_point_projected.parquet'
 
 # application
 progress_state = {
@@ -20,4 +20,3 @@ progress_state = {
     "btn-process-disabled": False,
     "btn-download-disabled": False
 }
-

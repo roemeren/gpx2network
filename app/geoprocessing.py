@@ -143,7 +143,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     """
     print("Processing zip file...")
     # Ensure target folder is empty
-    zip_folder = os.path.join(UPLOAD_FOLDER, "unzipped_gpx")
+    zip_folder = os.path.join(UPLOAD_FOLDER, "temp")
     if os.path.exists(zip_folder):
         shutil.rmtree(zip_folder)
     os.makedirs(zip_folder, exist_ok=True)

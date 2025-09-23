@@ -5,6 +5,7 @@ import platform
 import subprocess
 from pathlib import Path
 from scripts.geofabrik_date import *
+from core.common import multiline_geojson, multiline_parquet_proj, point_parquet_proj
 from tqdm import tqdm
 
 # geoprocessing
@@ -13,11 +14,10 @@ buffer_distance = 20  # in meters
 simplify_tolerance = 10 #  in meters (will drastically decrease memory)
 intersect_threshold = 0.75
 node_width = 3
-input_gpkg = "data/temp/rcn_output.gpkg"
-multiline_geojson = 'data/geojson/gdf_multiline.geojson'
-point_geojson = 'data/geojson/gdf_point.geojson'
-multiline_geojson_proj = 'data/geojson/gdf_multiline_projected.geojson'
-point_geojson_proj = 'data/geojson/gdf_point_projected.geojson'
+input_gpkg = "data/intermediate/rcn_output.gpkg"
+point_geojson = 'data/processed/gdf_point.geojson'
+multiline_geojson_proj = 'data/processed/gdf_multiline_projected.geojson'
+point_geojson_proj = 'data/processed/gdf_point_projected.geojson'
 tqdm_default = {"mininterval": 0.1, "miniters": 1}
 
 def parse_and_filter_tags(tag_string, tags_to_keep=None):
@@ -242,15 +242,16 @@ def process_osm_data(tqdm_params):
     # Save the outputs as GeoJSON and parquet for use in the app
     # compared to shapefiles there is no truncation of column names but takes longer
     print("[INFO] Saving outputs...")
+    # main outputs
     gdf_multiline.to_file(multiline_geojson, driver='GeoJSON')
-    gdf_multiline_projected.to_file(multiline_geojson_proj, driver='GeoJSON')
-    gdf_multiline.to_parquet(multiline_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
-    gdf_multiline_projected.to_parquet(multiline_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
-    gdf_point.to_file(point_geojson, driver='GeoJSON')
+    gdf_multiline_projected.to_parquet(multiline_parquet_proj, engine="pyarrow")
     gdf_point_projected.to_file(point_geojson_proj, driver='GeoJSON')
-    gdf_point.to_parquet(point_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
+    # secondary outputs
+    gdf_multiline.to_parquet(multiline_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
+    gdf_multiline_projected.to_file(multiline_geojson_proj, driver='GeoJSON')
+    gdf_point.to_file(point_geojson, driver='GeoJSON')
+    gdf_point.to_parquet(point_parquet_proj, engine="pyarrow")
     gdf_point_projected.to_parquet(point_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
-
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":

@@ -27,8 +27,8 @@ jobs:
       - name: Get current DATA_VERSION
         id: get_current
         run: |
-          if [ -f data/geojson/DATA_VERSION.txt ]; then
-            CURRENT=$(cat data/geojson/DATA_VERSION.txt)
+          if [ -f data/processed/DATA_VERSION.txt ]; then
+            CURRENT=$(cat data/processed/DATA_VERSION.txt)
           else
             CURRENT=0
           fi
@@ -92,17 +92,17 @@ jobs:
         id: geofabrik-cache
         uses: actions/cache@v4
         with:
-          path: .cache/geofabrik/belgium-latest.osm.pbf
+          path: data/raw/belgium-latest.osm.pbf
           key: belgium-${{ needs.check-latest.outputs.latest_date }}
 
       # Download Geofabrik file only if cache was missed
       - name: Download Geofabrik file if needed
         if: steps.geofabrik-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p .cache/geofabrik
+          mkdir -p data/raw
           echo "[INFO] Downloading Belgium OSM PBF"
           curl -L "https://download.geofabrik.de/europe/belgium-${{ needs.check-latest.outputs.latest_date }}.osm.pbf" \
-              -o ".cache/geofabrik/belgium-latest.osm.pbf"
+              -o "data/raw/belgium-latest.osm.pbf"
           echo "[INFO] Download complete"
 
       # Run preprocessing script
@@ -118,7 +118,7 @@ jobs:
       # Update data version
       - name: Update data version file
         run: |
-          mkdir -p data/geojson
+          mkdir -p data/processed
           echo "${{ needs.check-latest.outputs.latest_date }}" > data/geojson/DATA_VERSION.txt
 
       # Commit changes and create Pull Request (idempotent)

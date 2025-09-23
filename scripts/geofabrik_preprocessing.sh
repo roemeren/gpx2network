@@ -3,7 +3,7 @@ set -e
 
 echo "=== START OSM PROCESSING ==="
 
-TEMP_DIR="data/temp"
+TEMP_DIR="data/intermediate"
 mkdir -p "$TEMP_DIR"
 echo "[INFO] Temp directory ensured: $TEMP_DIR"
 
