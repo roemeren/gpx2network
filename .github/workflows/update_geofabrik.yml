@@ -119,7 +119,7 @@ jobs:
       - name: Update data version file
         run: |
           mkdir -p data/processed
-          echo "${{ needs.check-latest.outputs.latest_date }}" > data/processed/DATA_VERSION.txt
+          echo "${{ needs.check-latest.outputs.latest_date }}" > data/processed/DATA_VERSION
 
       # Commit changes and create Pull Request (idempotent)
       - name: Create Pull Request

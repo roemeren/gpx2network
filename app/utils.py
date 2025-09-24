@@ -1,11 +1,11 @@
 from pathlib import Path
 from datetime import datetime
 
-DATA_VERSION_FILE = Path("data/processed/DATA_VERSION.txt")
+DATA_VERSION_FILE = Path("data/processed/DATA_VERSION")
 VERSION_FILE = Path("VERSION")
 
 def get_data_version():
-    """Return dataset version from DATA_VERSION.txt as DD-MMM-YYYY, or 'unknown'."""
+    """Return dataset version from DATA_VERSION as DD-MMM-YYYY, or 'unknown'."""
     if DATA_VERSION_FILE.exists():
         raw = DATA_VERSION_FILE.read_text().strip()
         try:

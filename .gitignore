@@ -4,7 +4,7 @@ data/*
 data/processed/*
 !data/processed/*.geojson
 !data/processed/*.parquet
-!data/processed/*.txt
+!data/processed/DATA_VERSION
 
 # Ignore static files from the app
 app/static/
