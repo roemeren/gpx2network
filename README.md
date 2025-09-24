@@ -45,25 +45,13 @@ python3.12 -m venv venv
 source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
-
-### Step 3: Ensure system tools are available
-
-- osmium-tool (used for OSM processing)
-    - Linux: `sudo apt install osmium-tool`
-    - Windows: use Conda or install via OSGeo packages
-- ogr2ogr (GDAL)
-    - Linux: `sudo apt install gdal-bin`
-    - Windows: install QGIS or OSGeo4W and modify the following environment variables:
-        - **Path**: Add the path to the folder that contains `ogr2ogr.exe`, e.g. `C:\Program Files\QGIS 3.28.6\bin`
-        - **GDAL_DATA**: Add a variable with the path to the folder that contains `osmconf.ini` file (needed to run `ogr2ogr.exe`), e.g.`C:\Program Files\QGIS 3.28.6\apps\gdal\share\gdal`
-
-### Step 4: Run the app
+### Step 3: Run the app
 
 ```bash
 python -m app.app
 ```
 
-### Step 5: Open the app in your browser
+### Step 4: Open the app in your browser
 
 Open http://127.0.0.1:8050 in your browser
 
@@ -84,3 +72,31 @@ Open http://127.0.0.1:8050 in your browser
 - `app/static/` – Generated results and static files
 - `data/processed/` – Preprocessed bike network data + DATA_VERSION.txt
 - `core/` – Helper functions and geoprocessing logic
+
+## Notes
+
+### Manual Update of Underlying Data
+
+The app normally relies on preprocessed data in `data/processed/`, which is updated through an automated GitHub workflow that creates a pull request. 
+However, if you want to update the data manually, **osmium** and **GDAL** need to be installed locally.
+
+**Dependencies:**
+
+- **osmium-tool** (for OSM processing)  
+  - Linux: `sudo apt install osmium-tool`  
+  - Windows: install via Conda or OSGeo packages
+- **ogr2ogr** (GDAL)  
+  - Linux: `sudo apt install gdal-bin`  
+  - Windows: install QGIS or OSGeo4W and set the following environment variables:  
+    - **Path**: folder containing `ogr2ogr.exe`, e.g., `C:\Program Files\QGIS 3.28.6\bin`  
+    - **GDAL_DATA**: folder containing `osmconf.ini` (needed for `ogr2ogr.exe`), e.g., `C:\Program Files\QGIS 3.28.6\apps\gdal\share\gdal`
+
+**How to Update Data Locally:**
+
+- **Windows:**  
+    From the repository root, run:  
+    ```bash
+    python -m scripts.geofabrik_processing
+    ```
+- **Linux**:
+    A similar bash script scripts/geofabrik_processing.sh exists, but it is currently configured to work in combination with the GitHub workflow update_geofabrik.yml. Some modifications may be needed to run it fully standalone on a local Linux system.
