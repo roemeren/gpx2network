@@ -2,8 +2,14 @@ name: Deploy Application
 
 on:
   push:
+    # Trigger on version tags
     tags:
       - 'v*.*.*'  # This pattern matches tags like 'v1.0.3'
+    # Trigger on pushes to main if any data file has changed
+    branches:
+      - main
+    paths:
+      - 'data/processed/**'
   workflow_dispatch:   # Allow manual trigger
 
 jobs:
