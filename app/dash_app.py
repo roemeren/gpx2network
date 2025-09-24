@@ -97,7 +97,7 @@ app.layout = dbc.Container(
                     ),
                     # --- Show data and app version ---
                     html.Div(f"Data version: {get_data_version()} (source: Geofabrik)", style={"fontSize": "12px", "color": "#666", "marginTop": "10px"}),
-                    html.Div(f"App version: {get_latest_git_tag()}", style={"fontSize": "12px", "color": "#666"}),
+                    html.Div(f"App version: {get_app_version()}", style={"fontSize": "12px", "color": "#666"}),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=2000, disabled=True),
                     dcc.Store(id="dummy-store"),

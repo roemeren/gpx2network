@@ -18,6 +18,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4  # Check out the code from the repository
 
+    - name: Generate VERSION file
+      run: |
+        TAG=$(git describe --tags --abbrev=0)
+        echo "$TAG" > VERSION
+        echo "VERSION=$TAG, Branch=$(git branch --show-current)"
+
     - name: Deploy to Render
       run: |
         set -e

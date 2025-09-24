@@ -17,12 +17,15 @@ def get_data_version():
             return raw
     return "unknown"
 
-def get_latest_git_tag():
+def get_app_version():
+    """Return the app version: prefer VERSION file (deployed), fallback to git tag (dev)."""
+    version_file = Path("VERSION")
+    if version_file.exists():
+        return version_file.read_text().strip()
     try:
-        tag = subprocess.check_output(
-            ["git", "describe", "--tags", "--abbrev=0"],
-            stderr=subprocess.DEVNULL
-        ).decode("utf-8").strip()
-        return tag
+        # Only works in a git repo locally
+        return subprocess.check_output(
+            ["git", "describe", "--tags", "--abbrev=0"], text=True
+        ).strip()
     except Exception:
         return "unknown"
