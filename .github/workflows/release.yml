@@ -16,7 +16,10 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4  # Check out the code from the repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0   # fetch full history
+        tags: true       # ensure tags are fetched
 
     - name: Generate VERSION file
       run: |
