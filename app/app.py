@@ -1,5 +1,6 @@
-from shared.common import *
-from shared.geoprocessing import *
+from core.common import *
+from app.geoprocessing import *
+from pathlib import Path
 import json
 import base64
 import threading
@@ -21,11 +22,11 @@ date_picker_min_date = datetime.date(2010, 1, 1)
 date_picker_max_date = datetime.date.today()
 
 # Ensure static folder exists
-os.makedirs(RES_FOLDER, exist_ok=True)
+os.makedirs(STATIC_FOLDER, exist_ok=True)
 
 # Load bike network GeoDataFrames (for processing)
-bike_network_seg = gpd.read_parquet(multiline_proj_parquet)
-bike_network_node = gpd.read_parquet(point_proj_parquet)
+bike_network_seg = gpd.read_parquet(multiline_parquet_proj)
+bike_network_node = gpd.read_parquet(point_parquet_proj)
 
 # Load simplified bike network GeoJSON lines (for mapping)
 with open(multiline_geojson , "r") as f:
@@ -349,19 +350,19 @@ def process_zip(_, filename):
         all_segments = all_segments.to_crs(epsg=4326) if not all_segments.empty else gpd.GeoDataFrame()
         all_nodes = all_nodes.to_crs(epsg=4326) if not all_nodes.empty else gpd.GeoDataFrame()
 
-        segments_file_path = os.path.join(RES_FOLDER, "all_matched_segments_wgs84.geojson")
-        nodes_file_path = os.path.join(RES_FOLDER, "all_matched_nodes_wgs84.geojson")
+        segments_file_path = os.path.join(STATIC_FOLDER, "all_matched_segments_wgs84.geojson")
+        nodes_file_path = os.path.join(STATIC_FOLDER, "all_matched_nodes_wgs84.geojson")
         all_segments.to_file(segments_file_path, driver="GeoJSON")
         all_nodes.to_file(nodes_file_path, driver="GeoJSON")
 
-        results_zip = create_result_zip(segments_file_path, nodes_file_path)
-        download_href = f"/static/{os.path.relpath(results_zip, 'static').replace(os.sep, '/')}"
+        zip_name = create_result_zip(segments_file_path, nodes_file_path)
 
         # Only update store when processing is done
         progress_state["store_data"] = {
             "segments": all_segments.__geo_interface__,
             "nodes": all_nodes.__geo_interface__,
-            "download_href": download_href
+            # must be relative to app root here for Dash download link
+            "download_href": os.path.join("static", zip_name)
         }
         progress_state["pct"] = 100
         progress_state["btn-process-disabled"] = False
@@ -767,4 +768,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

@@ -66,8 +66,7 @@ def tcx_to_gpx(tcx_path: str, gpx_path: str):
     # Write to file
     ET.ElementTree(gpx).write(gpx_path, encoding="utf-8", xml_declaration=True)
 
-
-def batch_convert(input_folder: str, output_folder: str):
+def tcx_to_gpx_batch(input_folder: str, output_folder: str):
     """Convert all TCX files in a folder to GPX.
 
     Iterates through the given input folder, converts each ``.tcx`` file

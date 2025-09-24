@@ -1,4 +1,4 @@
-from shared.common import *
+from core.common import *
 from shapely.geometry import Point, LineString, MultiLineString
 import shutil
 import zipfile
@@ -195,8 +195,11 @@ def create_result_zip(segments_path, nodes_path):
     """
     Zip the two GeoJSON result files and return the zip file path.
     """
-    zip_path = os.path.join(RES_FOLDER, "matched_results.zip")
+    zip_name = "matched_results.zip"
+    zip_path = os.path.join(STATIC_FOLDER, zip_name)
+
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.write(segments_path, arcname="all_matched_segments_wgs84.geojson")
         zf.write(nodes_path, arcname="all_matched_nodes_wgs84.geojson")
-    return zip_path
+    
+    return zip_name

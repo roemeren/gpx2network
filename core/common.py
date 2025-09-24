@@ -5,8 +5,8 @@ import os
 
 # ---------- Constants ----------
 # files and folders
-UPLOAD_FOLDER = "uploads"
-RES_FOLDER = "static" # folder for output files, automatically served by Dash for downloads
+UPLOAD_FOLDER = "app/uploads"
+STATIC_FOLDER = "app/static"
 
 # geoprocessing
 multiline_geojson = 'data/processed/gdf_multiline.geojson'
