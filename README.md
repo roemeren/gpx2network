@@ -11,8 +11,6 @@ files from an old Garmin device collecting dust, etc.—see matched nodes and se
 The app is deployed on [Render](https://gpx-bike-node-matcher.onrender.com) (heads-up: it can be a bit slow on free tiers).  
 For a smoother ride, it’s recommended to run it locally.
 
----
-
 ## Features
 
 - Upload and process your GPX rides in a ZIP file.
@@ -23,8 +21,6 @@ For a smoother ride, it’s recommended to run it locally.
 - Optional display of the preloaded bike network.
 - Clustered nodes for cleaner visualization.
 
----
-
 ## Data
 
 The underlying bike network data comes from [Geofabrik OSM extracts](https://download.geofabrik.de/europe/).  
@@ -33,13 +29,13 @@ Dataset version is displayed in the app and stored in `data/processed/DATA_VERSI
 
 ## Running Locally
 
-1. Clone the repo:
+### Step 1: Clone the repo
 
 ```bash
 git clone <repo_url>
 cd <repo_name>
 ```
-2. Create a Python 3.12 environment and install dependencies:
+### Step 2: Create a Python 3.12 environment and install dependencies
 
 ```bash
 python3.12 -m venv venv
@@ -47,7 +43,7 @@ source venv/bin/activate  # or venv\Scripts\activate on Windows
 pip install -r requirements.txt
 ```
 
-3. Ensure system tools are available
+### Step 3: Ensure system tools are available
 
 - osmium-tool (used for OSM processing)
     - Linux: `sudo apt install osmium-tool`
@@ -58,17 +54,15 @@ pip install -r requirements.txt
         - **Path**: Add the path to the folder that contains `ogr2ogr.exe`, e.g. `C:\Program Files\QGIS 3.28.6\bin`
         - **GDAL_DATA**: Add a variable with the path to the folder that contains `osmconf.ini` file (needed to run `ogr2ogr.exe`), e.g.`C:\Program Files\QGIS 3.28.6\apps\gdal\share\gdal`
 
-4. Run the app
+### Step 4: Run the app
 
 ```bash
 python -m app.app
 ```
 
-5. Open http://127.0.0.1:8050 in your browser
+### Step 5: Open http://127.0.0.1:8050 in your browser
 
 **Warning:** large GPX ZIPs can take a while. Patience is a virtue. ⏳
-
----
 
 ## Usage
 
@@ -79,16 +73,12 @@ python -m app.app
 - Filter by date and adjust cluster radius for node display.
 - Click **Recenter Map** if needed.
 
----
-
 ## Project Structure (Highlights)
 
 - `app/` – Dash app code
 - `app/static/` – Generated results and static files
 - `data/processed/` – Preprocessed bike network data + DATA_VERSION.txt
 - `core/` – Helper functions and geoprocessing logic
-
----
 
 ## Notes
 
