@@ -18,8 +18,7 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       with:
-        fetch-depth: 0   # fetch full history
-        tags: true       # ensure tags are fetched
+        fetch-depth: 0   # fetch all history and tags
 
     - name: Generate VERSION file
       run: |
