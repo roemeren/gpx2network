@@ -1,6 +1,6 @@
 from core.common import *
 from app.geoprocessing import *
-from pathlib import Path
+from app.utils import *
 import json
 import base64
 import threading
@@ -95,6 +95,9 @@ app.layout = dbc.Container(
                         ),
                         id="download-container"
                     ),
+                    # --- Show data and app version ---
+                    html.Div(f"Data version: {get_data_version()} (source: Geofabrik)", style={"fontSize": "12px", "color": "#666", "marginTop": "10px"}),
+                    html.Div(f"App version: {get_latest_git_tag()}", style={"fontSize": "12px", "color": "#666"}),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=2000, disabled=True),
                     dcc.Store(id="dummy-store"),
