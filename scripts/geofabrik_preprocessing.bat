@@ -43,7 +43,7 @@ IF EXIST "data\raw\%FILENAME%" (
     echo [INFO] data\raw\%FILENAME% already exists, skipping download
 ) ELSE (
     echo [INFO] Downloading %FILENAME%
-    curl -s -o "data\raw\%FILENAME%" "https://download.geofabrik.de/europe/%FILENAME%"
+    curl -o "data\raw\%FILENAME%" "https://download.geofabrik.de/europe/%FILENAME%"
     echo [INFO] Download complete: %FILENAME%
 )
 
