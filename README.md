@@ -12,7 +12,7 @@ files from an old Garmin device collecting dust, etc.—see matched nodes and se
 
 ## Demo
 
-The app is deployed on [Render](https://gpx-bike-node-matcher.onrender.com) (heads-up: it can be a bit slow on free tiers).  
+The app is deployed on [Render](https://gpx-bike-node-matcher.onrender.com) (heads-up: free-tier hosting makes ZIP processing a bit slow 🐢).  
 For a smoother ride, it’s recommended to run it locally.
 
 ## Features
@@ -84,7 +84,3 @@ Open http://127.0.0.1:8050 in your browser
 - `app/static/` – Generated results and static files
 - `data/processed/` – Preprocessed bike network data + DATA_VERSION.txt
 - `core/` – Helper functions and geoprocessing logic
-
-## Notes
-
-- The free Render deployment can be quite slow; for production use, a higher-tier server or more resources are recommended.
