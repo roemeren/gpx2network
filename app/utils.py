@@ -22,10 +22,4 @@ def get_app_version():
     version_file = Path("VERSION")
     if version_file.exists():
         return version_file.read_text().strip()
-    try:
-        # Only works in a git repo locally
-        return subprocess.check_output(
-            ["git", "describe", "--tags", "--abbrev=0"], text=True
-        ).strip()
-    except Exception:
-        return "unknown"
+    return "unknown"
