@@ -21,7 +21,6 @@ For a smoother ride, it’s recommended to run it locally.
 - Visualize matched bike segments and nodes on an interactive map.
 - Aggregated statistics on matched nodes, segments, and segment length.
 - Download processed results as a ZIP file.
-- Data version display (from `data/processed/DATA_VERSION.txt`) so you know exactly which dataset you’re using.
 - Optional display of the preloaded bike network.
 - Clustered nodes for cleaner visualization.
 
@@ -64,7 +63,9 @@ pip install -r requirements.txt
 python -m app.app
 ```
 
-### Step 5: Open http://127.0.0.1:8050 in your browser
+### Step 5: Open the app in your browser
+
+Open http://127.0.0.1:8050 in your browser
 
 **Warning:** large GPX ZIPs can take a while. Patience is a virtue. ⏳
 
@@ -87,4 +88,3 @@ python -m app.app
 ## Notes
 
 - The free Render deployment can be quite slow; for production use, a higher-tier server or more resources are recommended.
-- The app automatically shows the dataset version in the left panel, so you always know which bike network release you are using.
