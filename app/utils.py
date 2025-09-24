@@ -1,9 +1,8 @@
-# core/data_utils.py
 from pathlib import Path
-import subprocess
 from datetime import datetime
 
 DATA_VERSION_FILE = Path("data/processed/DATA_VERSION.txt")
+VERSION_FILE = Path("VERSION")
 
 def get_data_version():
     """Return dataset version from DATA_VERSION.txt as DD-MMM-YYYY, or 'unknown'."""
@@ -18,8 +17,7 @@ def get_data_version():
     return "unknown"
 
 def get_app_version():
-    """Return the app version: prefer VERSION file (deployed), fallback to git tag (dev)."""
-    version_file = Path("VERSION")
-    if version_file.exists():
-        return version_file.read_text().strip()
+    """Return the app version from VERSION file"""
+    if VERSION_FILE.exists():
+        return VERSION_FILE.read_text().strip()
     return "unknown"
