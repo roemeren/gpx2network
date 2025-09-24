@@ -20,7 +20,7 @@ COPY . .
 # Expose Dash port (Render will override $PORT)
 EXPOSE 8050
 
-# Start Dash via Gunicorn
-# - app.app:server refers to the Flask server inside app/app.py
+# Start Dash using Gunicorn
+# - app:server refers to the Flask server object inside app.py
 # - bind to 0.0.0.0:$PORT so Render can dynamically assign the port
 CMD gunicorn app:server --bind 0.0.0.0:$PORT
