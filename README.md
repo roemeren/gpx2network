@@ -1,5 +1,9 @@
 # Belgian Bike Node Network Matcher 🚲
 
+![GitHub tag (latest)](https://img.shields.io/github/v/tag/roemeren/gpx-bike-node-matcher)
+![Last Commit](https://img.shields.io/github/last-commit/roemeren/gpx-bike-node-matcher)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 A Dash app to explore how your GPX rides align with Belgium’s bike node network.  
 Upload a ZIP of your rides—these can be exports from Garmin Connect, Strava, 
 files from an old Garmin device collecting dust, etc.—see matched nodes and segments on a map, and download the results.
