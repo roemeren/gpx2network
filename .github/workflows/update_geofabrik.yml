@@ -27,8 +27,8 @@ jobs:
       - name: Get current DATA_VERSION
         id: get_current
         run: |
-          if [ -f data/processed/DATA_VERSION.txt ]; then
-            CURRENT=$(cat data/processed/DATA_VERSION.txt)
+          if [ -f data/processed/DATA_VERSION ]; then
+            CURRENT=$(cat data/processed/DATA_VERSION)
           else
             CURRENT=0
           fi
