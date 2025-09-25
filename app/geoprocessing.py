@@ -9,7 +9,12 @@ import time # for testing optimization: start/stop = time.time() (in s)
 # geoprocessing parameters
 buffer_distance = 20  # in meters
 intersect_threshold = 0.75
-PARALLEL_THRESHOLD = 20
+# Minimum number of files before we even consider parallel parsing
+PARALLEL_MIN_FILES = 20
+# Minimum CPU cores required for safe parallel parsing.
+# Render’s free tier only provides 2 cores, and parallel processing
+# there tends to fail or get killed due to memory limits.
+PARALLEL_MIN_CORES = 3
 
 # --- helper function at module level (picklable) ---
 def parse_single_gpx(gpx_file, zip_folder):
@@ -79,7 +84,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     # --- parse GPX files ---
     gpx_rows = []
     num_cores = os.cpu_count() or 1  # fallback to 1 if detection fails
-    use_parallel = total_files >= PARALLEL_THRESHOLD and num_cores > 1
+    use_parallel = total_files >= PARALLEL_MIN_FILES and num_cores >= PARALLEL_MIN_CORES
 
     if not use_parallel:
         # Sequential parsing
