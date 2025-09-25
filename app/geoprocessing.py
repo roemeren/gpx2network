@@ -3,10 +3,41 @@ from shapely.geometry import LineString, MultiLineString
 import shutil
 import zipfile
 import gpxpy
+from concurrent.futures import ProcessPoolExecutor, as_completed
+import time # for testing optimization: start/stop = time.time() (in s)
 
+# geoprocessing parameters
 buffer_distance = 20  # in meters
 intersect_threshold = 0.75
+PARALLEL_THRESHOLD = 20
 
+# --- helper function at module level (picklable) ---
+def parse_single_gpx(gpx_file, zip_folder):
+    gpx_path = os.path.join(zip_folder, gpx_file)
+    with open(gpx_path, 'r', encoding='utf-8-sig') as fh:
+        gpx = gpxpy.parse(fh)
+
+    start_time = None
+    if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
+        start_time = gpx.tracks[0].segments[0].points[0].time
+    gpx_date = start_time.date() if start_time else None
+    if gpx_date is None:
+        return None
+
+    line_segments = []
+    for track in gpx.tracks:
+        for seg in track.segments:
+            pts = [(p.longitude, p.latitude) for p in seg.points]
+            if len(pts) > 1:
+                line_segments.append(LineString(pts))
+
+    if not line_segments:
+        return None
+
+    geom = MultiLineString(line_segments) if len(line_segments) > 1 else line_segments[0]
+    return {"gpx_name": os.path.basename(gpx_file), "gpx_date": gpx_date, "geometry": geom}
+
+# --- main function ---
 def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     """
     Process a ZIP archive of GPX files and match tracks with a bike network.
@@ -16,6 +47,9 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     segments exceeding the overlap threshold, and extracts corresponding bike nodes.
 
     Progress updates are written to `progress_state` throughout the steps.
+
+    Uses sequential parsing for a small number of files and parallel parsing
+    for larger ZIPs to improve performance.
 
     Args:
         zip_file_path (str): Path to the ZIP file containing GPX files.
@@ -27,6 +61,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
             GeoDataFrame: Matched bike network segments with GPX metadata.
             GeoDataFrame: Matched bike nodes corresponding to the segments.
     """
+
     # --- unzip ---
     zip_folder = os.path.join(UPLOAD_FOLDER, "temp")
     if os.path.exists(zip_folder):
@@ -35,41 +70,35 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         zip_ref.extractall(zip_folder)
 
-    # list gpx files
+    # list GPX files
     gpx_files = [f for f in os.listdir(zip_folder) if f.lower().endswith(".gpx")]
     total_files = len(gpx_files)
     if total_files == 0:
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()
 
-    # --- parse GPX files into one GeoDataFrame (one row per GPX file) ---
+    # --- parse GPX files ---
     gpx_rows = []
-    for i, gpx_file in enumerate(gpx_files, start=1):
-        progress_state["current-task"] = f"Parsing GPX files: {i}/{total_files}"
-        progress_state["pct"] = round(i / total_files * 50)
 
-        gpx_path = os.path.join(zip_folder, gpx_file)
-        with open(gpx_path, 'r', encoding='utf-8-sig') as fh:
-            gpx = gpxpy.parse(fh)
-
-        start_time = None
-        if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
-            start_time = gpx.tracks[0].segments[0].points[0].time
-        gpx_date = start_time.date() if start_time else None
-        if gpx_date is None:
-            continue
-
-        line_segments = []
-        for track in gpx.tracks:
-            for seg in track.segments:
-                pts = [(p.longitude, p.latitude) for p in seg.points]
-                if len(pts) > 1:
-                    line_segments.append(LineString(pts))
-
-        if not line_segments:
-            continue
-
-        geom = MultiLineString(line_segments) if len(line_segments) > 1 else line_segments[0]
-        gpx_rows.append({"gpx_name": os.path.basename(gpx_file), "gpx_date": gpx_date, "geometry": geom})
+    if total_files <= PARALLEL_THRESHOLD:
+        # Sequential parsing
+        for i, gpx_file in enumerate(gpx_files, start=1):
+            progress_state["current-task"] = f"Parsing GPX files: {i}/{total_files}"
+            progress_state["pct"] = round(i / total_files * 50)
+            result = parse_single_gpx(gpx_file, zip_folder)
+            if result:
+                gpx_rows.append(result)
+    else:
+        # Parallel parsing
+        futures = []
+        with ProcessPoolExecutor() as executor:
+            for gpx_file in gpx_files:
+                futures.append(executor.submit(parse_single_gpx, gpx_file, zip_folder))
+            for i, future in enumerate(as_completed(futures), start=1):
+                result = future.result()
+                if result:
+                    gpx_rows.append(result)
+                progress_state["current-task"] = f"Parsing GPX files: {i}/{total_files}"
+                progress_state["pct"] = round(i / total_files * 50)
 
     if not gpx_rows:
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()
@@ -77,11 +106,9 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     all_gpx_gdf = gpd.GeoDataFrame(gpx_rows, crs="EPSG:4326")
 
     # --- reproject ---
-    progress_state["current-task"] = "Reprojecting GPX geometries..."
+    progress_state["current-task"] = "Reprojecting GPX geometries to Lambert 2008..."
     progress_state["pct"] = 55
     all_gpx_gdf = all_gpx_gdf.to_crs("EPSG:3812")
-    bike_network = bike_network.to_crs("EPSG:3812")
-    point_geodf = point_geodf.to_crs("EPSG:3812")
 
     # --- buffer GPX geometries ---
     progress_state["current-task"] = "Buffering GPX geometries..."
@@ -117,14 +144,11 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     joined["segment_length"] = joined.geometry.length
     joined["intersection_geom"] = joined.geometry.intersection(joined["buffer_geom"])
     joined["intersection_length"] = joined["intersection_geom"].length.fillna(0)
-
-    joined["overlap"] = 0.0
     mask = joined["segment_length"] > 0
-    joined.loc[mask, "overlap"] = (
-        (joined.loc[mask, "intersection_length"] / joined.loc[mask, "segment_length"])
-        .clip(lower=0.0, upper=1.0)
+    joined["overlap_percentage"] = 0.0
+    joined.loc[mask, "overlap_percentage"] = (
+        (joined.loc[mask, "intersection_length"] / joined.loc[mask, "segment_length"]).clip(0, 1)
     )
-    joined = joined.rename(columns={"overlap": "overlap_percentage"})
 
     # --- filter and drop extra columns ---
     mask = joined["overlap_percentage"] >= intersect_threshold
@@ -156,9 +180,11 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
         matched_nodes["gpx_date"] = gpx_date
         nodes_list.append(matched_nodes)
 
-    all_nodes = (gpd.GeoDataFrame(pd.concat(nodes_list, ignore_index=True), crs=point_geodf.crs)
-                 if nodes_list else
-                 gpd.GeoDataFrame(columns=list(point_geodf.columns) + ["gpx_name", "gpx_date"]))
+    all_nodes = (
+        gpd.GeoDataFrame(pd.concat(nodes_list, ignore_index=True), crs=point_geodf.crs)
+        if nodes_list
+        else gpd.GeoDataFrame(columns=list(point_geodf.columns) + ["gpx_name", "gpx_date"])
+    )
 
     progress_state["current-task"] = "Processing done!"
     progress_state["pct"] = 100
