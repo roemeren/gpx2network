@@ -5,6 +5,7 @@ import json
 import base64
 import threading
 import datetime
+import psutil
 from dash import no_update, Dash, html, dcc, Output, Input, State, dash_table
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
@@ -344,7 +345,7 @@ def process_zip(_, filename):
     progress_state["pct"] = 0
     progress_state["btn-process-disabled"] = True
     progress_state["btn-download-disabled"] = True
-    progress_state["processed-file"] = f"Processing {filename}..."
+    progress_state["current-task"] = f"Processing {filename}..."
 
     def worker():
         progress_state["running"] = True
@@ -370,7 +371,7 @@ def process_zip(_, filename):
         progress_state["pct"] = 100
         progress_state["btn-process-disabled"] = False
         progress_state["btn-download-disabled"] = False
-        progress_state["processed-file"] = f"Finished processing {filename}"
+        progress_state["current-task"] = f"Finished processing {filename}"
         # disable polling
         progress_state["running"] = False
 
@@ -397,14 +398,14 @@ def process_zip(_, filename):
 )
 def update_progress(*_):
     pct = progress_state.get("pct", 0)
-    processed_file = progress_state.get("processed-file", "")
+    processed_file = progress_state.get("current-task", "")
     btn_disabled = progress_state.get("btn-process-disabled", False)
     btn_download_disabled = progress_state.get("btn-download-disabled", True)
     # only stop polling when the processing thread has effectively finished
     poller_disabled = not progress_state.get("running", True)
     label = f"{pct}%" if pct >= 5 else ""
     href = progress_state.get("store_data", {}).get("download_href")
-    style = {"display": "block"} if pct >= 100 else {"display": "none"}
+    style = {"display": "block", "width": "40%"} if pct >= 100 else {"display": "none"}
 
     # Only update store when ready
     store_data = progress_state.get("store_data") if pct >= 100 else no_update

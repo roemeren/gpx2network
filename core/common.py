@@ -16,7 +16,7 @@ point_parquet_proj = 'data/processed/gdf_point_projected.parquet'
 # application
 progress_state = {
     "pct": 0,
-    "processed-file": "",
+    "current-file": "",
     "btn-process-disabled": False,
     "btn-download-disabled": False
 }
