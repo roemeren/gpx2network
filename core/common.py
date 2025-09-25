@@ -12,11 +12,3 @@ STATIC_FOLDER = "app/static"
 multiline_geojson = 'data/processed/gdf_multiline.geojson'
 multiline_parquet_proj = 'data/processed/gdf_multiline_projected.parquet'
 point_parquet_proj = 'data/processed/gdf_point_projected.parquet'
-
-# application
-progress_state = {
-    "pct": 0,
-    "current-file": "",
-    "btn-process-disabled": False,
-    "btn-download-disabled": False
-}

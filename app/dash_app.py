@@ -33,7 +33,8 @@ bike_network_node = gpd.read_parquet(point_parquet_proj)
 with open(multiline_geojson , "r") as f:
    geojson_network = json.load(f)
 
-app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+# nice ones: ZEPHYR, SANDSTONE
+app = Dash(__name__, external_stylesheets=[dbc.themes.ZEPHYR])
 server = app.server
 
 # Check memory usage before processing
@@ -83,7 +84,6 @@ app.layout = dbc.Container(
                             "fontSize": "0.95rem"
                         }
                     ),
-                    html.Div(id="load-status"),
                     html.Div(
                         dbc.Button(
                             "Download Results",
@@ -101,7 +101,9 @@ app.layout = dbc.Container(
                     html.Div(f"App version: {get_app_version()}", style={"fontSize": "12px", "color": "#666"}),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=2000, disabled=True),
-                    dcc.Store(id="dummy-store"),
+                    # dummy stores for empty outputs
+                    dcc.Store(id="dummy-store-start"),
+                    dcc.Store(id="dummy-store-upload"),
                     # store matched segments and nodes
                     dcc.Store(id="geojson-store-full", data={}),
                     # store filtered & aggregated matched segments and nodes
@@ -311,7 +313,7 @@ app.layout = dbc.Container(
 processing_thread = None  # thread reference
 
 @app.callback(
-    Output("dummy-store", "data"),
+    Output("dummy-store-upload", "data"),
     Input("upload-zip", "contents"),
     State("upload-zip", "filename"),
 )
@@ -329,10 +331,10 @@ def save_uploaded_file(contents, filename):
         f.write(decoded)
 
     # just needs to return something
-    return {"status": "done"}
+    return {}
 
 @app.callback(
-    Output("load-status", "children"),
+    Output("dummy-store-start", "data"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
     prevent_initial_call=True
@@ -341,11 +343,16 @@ def process_zip(_, filename):
     if not filename:
         raise PreventUpdate
 
-    zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
+    # initialize progress data
     progress_state["pct"] = 0
     progress_state["btn-process-disabled"] = True
     progress_state["btn-download-disabled"] = True
-    progress_state["current-task"] = f"Processing {filename}..."
+    progress_state["current-task"] = f"Preparing to process {filename}"
+    progress_state["previous-task"] = ""
+    progress_state["show-dots"] = True
+    progress_state["dot-count"] = 0
+
+    zip_file_path = os.path.join(UPLOAD_FOLDER, filename)
 
     def worker():
         progress_state["running"] = True
@@ -379,8 +386,8 @@ def process_zip(_, filename):
     processing_thread = threading.Thread(target=worker)
     processing_thread.start()
 
-    # no need to return anything, only used for triggering polling
-    return ""
+    # no need to return anything, only used to trigger update_progress
+    return {}
 
 @app.callback(
     Output("progress", "value"),
@@ -392,17 +399,27 @@ def process_zip(_, filename):
     Output("btn-download", "href"),
     Output("btn-download", "style"),
     Output("geojson-store-full", "data"),
-    Input("progress-poller", "n_intervals"),
-    Input("load-status", "children"),
+    Input("progress-poller", "n_intervals"), # initially None
+    Input("dummy-store-start", "data"), # activates progress-poller
     prevent_initial_call=True
 )
 def update_progress(*_):
-    pct = progress_state.get("pct", 0)
-    processed_file = progress_state.get("current-task", "")
+    # reset or increment dots
+    current_task = progress_state.get("current-task", "")
+    prev_task = progress_state.get("previous-task", None)
+    if current_task != prev_task:
+        progress_state["dot-count"] = 0
+    else:
+        progress_state["dot-count"] = (progress_state["dot-count"] + 1) % 4
+    progress_state["previous-task"] = current_task
+    dots = "." * progress_state["dot-count"] if progress_state.get("show-dots") else ""
+
+    current_task = progress_state.get("current-task", "") + dots
     btn_disabled = progress_state.get("btn-process-disabled", False)
     btn_download_disabled = progress_state.get("btn-download-disabled", True)
     # only stop polling when the processing thread has effectively finished
     poller_disabled = not progress_state.get("running", True)
+    pct = progress_state.get("pct", 0)
     label = f"{pct}%" if pct >= 5 else ""
     href = progress_state.get("store_data", {}).get("download_href")
     style = {"display": "block", "width": "40%"} if pct >= 100 else {"display": "none"}
@@ -410,7 +427,7 @@ def update_progress(*_):
     # Only update store when ready
     store_data = progress_state.get("store_data") if pct >= 100 else no_update
 
-    return pct, label, poller_disabled, processed_file, btn_disabled, btn_download_disabled, href, style, store_data
+    return pct, label, poller_disabled, current_task, btn_disabled, btn_download_disabled, href, style, store_data
 
 @app.callback(
     Output("kpi-totsegments", "children"),
@@ -775,4 +792,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

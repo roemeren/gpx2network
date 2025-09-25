@@ -16,6 +16,9 @@ PARALLEL_MIN_FILES = 20
 # Minimum number of logical CPU cores required to enable parallel parsing (local only)
 PARALLEL_MIN_CORES = 2
 
+# -- application parameters --
+progress_state = {}
+
 # --- helper function at module level (picklable) ---
 def parse_single_gpx(gpx_file, zip_folder):
     gpx_path = os.path.join(zip_folder, gpx_file)
@@ -106,6 +109,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     if not use_parallel:
         # Sequential parsing
         for i, gpx_file in enumerate(gpx_files, start=1):
+            progress_state["show-dots"] = False
             progress_state["current-task"] = f"Parsing GPX files (sequential): {i}/{total_files}"
             progress_state["pct"] = round(i / total_files * 50)
             result = parse_single_gpx(gpx_file, zip_folder)
@@ -130,18 +134,19 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     all_gpx_gdf = gpd.GeoDataFrame(gpx_rows, crs="EPSG:4326")
 
     # --- reproject ---
-    progress_state["current-task"] = "Reprojecting GPX geometries to Lambert 2008..."
+    progress_state["show-dots"] = True
+    progress_state["current-task"] = "Reprojecting GPX geometries to Lambert 2008"
     progress_state["pct"] = 55
     all_gpx_gdf = all_gpx_gdf.to_crs("EPSG:3812")
 
     # --- buffer GPX geometries ---
-    progress_state["current-task"] = "Buffering GPX geometries..."
+    progress_state["current-task"] = "Buffering GPX geometries"
     progress_state["pct"] = 60
     all_gpx_gdf["buffer_geom"] = all_gpx_gdf.geometry.buffer(buffer_distance)
     gpx_buffers = all_gpx_gdf.set_geometry("buffer_geom")
 
     # --- spatial join ---
-    progress_state["current-task"] = "Matching all GPX tracks with bike network..."
+    progress_state["current-task"] = "Matching all GPX tracks with bike network"
     progress_state["pct"] = 65
     # keep the buffered geometry as the active geometry
     joined = gpd.sjoin(
@@ -163,7 +168,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     )
 
     # --- intersection lengths ---
-    progress_state["current-task"] = "Calculating intersection lengths..."
+    progress_state["current-task"] = "Calculating intersection lengths"
     progress_state["pct"] = 75
     joined["segment_length"] = joined.geometry.length
     joined["intersection_geom"] = joined.geometry.intersection(joined["buffer_geom"])
@@ -190,7 +195,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
         return gpd.GeoDataFrame(), gpd.GeoDataFrame()
 
     # --- matched nodes ---
-    progress_state["current-task"] = "Extracting matched bike nodes..."
+    progress_state["current-task"] = "Extracting matched bike nodes"
     progress_state["pct"] = 90
     nodes_list = []
     for (gpx_name, gpx_date), grp in all_segments.groupby(["gpx_name", "gpx_date"]):
@@ -209,7 +214,7 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
         if nodes_list
         else gpd.GeoDataFrame(columns=list(point_geodf.columns) + ["gpx_name", "gpx_date"])
     )
-
+    progress_state["show-dots"] = False
     progress_state["current-task"] = "Processing done!"
     progress_state["pct"] = 100
 
