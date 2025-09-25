@@ -471,7 +471,8 @@ def filter_data(store, start_date, end_date):
 
     # -- Aggregate segments --
     gdf_segments_filtered["gpx_date"] = pd.to_datetime(gdf_segments_filtered["gpx_date"])
-    agg_seg = gdf_segments_filtered.groupby((["ref", "osm_id", "osm_id_from", "osm_id_to"])).agg(
+    # Use dropna=False to keep groups with missing keys e.g. missing osm_id_from/to
+    agg_seg = gdf_segments_filtered.groupby((["ref", "osm_id", "osm_id_from", "osm_id_to"]), dropna=False).agg(
         length_km=("length_km", "max"),
         count_gpx=("gpx_name", "nunique"),
         max_overlap_percentage=("overlap_percentage", "max"),
@@ -480,6 +481,7 @@ def filter_data(store, start_date, end_date):
         # preserve geometry
         geometry=("geometry", "first")
     ).reset_index()
+
     agg_seg = gpd.GeoDataFrame(agg_seg, geometry="geometry", crs=gdf_segments_filtered.crs)
 
     # Apply formatting and sort result
@@ -507,7 +509,8 @@ def filter_data(store, start_date, end_date):
 
     # -- Aggregate nodes --
     gdf_nodes_filtered["gpx_date"] = pd.to_datetime(gdf_nodes["gpx_date"])
-    agg_nodes = gdf_nodes_filtered.groupby(["rcn_ref", "osm_id"]).agg(
+    # Use dropna=False to keep groups with missing keys e.g. missing osm_id_from/to
+    agg_nodes = gdf_nodes_filtered.groupby(["rcn_ref", "osm_id"], dropna=False).agg(
         count_gpx=("gpx_date", "nunique"),
         first_date=("gpx_date", "min"),
         last_date=("gpx_date", "max"),
@@ -620,7 +623,7 @@ def update_aggregated_tables(filtered_data):
     
     agg_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
     agg_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
-
+    
     # remove the geometry
     agg_seg = agg_seg.drop(columns="geometry")
     agg_nodes = agg_nodes.drop(columns="geometry")
@@ -771,4 +774,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)

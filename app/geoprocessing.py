@@ -1,5 +1,5 @@
 from core.common import *
-from shapely.geometry import Point, LineString, MultiLineString
+from shapely.geometry import LineString, MultiLineString
 import shutil
 import zipfile
 import gpxpy
