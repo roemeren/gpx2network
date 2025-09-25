@@ -11,6 +11,9 @@ import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from dash.exceptions import PreventUpdate
 
+# for debugging (usage: trigger = ctx.triggered_id)
+# from dash import callback_context as ctx  # or dash.ctx
+
 color_match = '#f39c12'
 color_network = '#7f8c8d'
 color_processing = '#343a40'
@@ -102,7 +105,7 @@ app.layout = dbc.Container(
                     dcc.Interval(id="progress-poller", interval=2000, disabled=True),
                     # stores for some of the callback outputs
                     dcc.Store(id="upload-ready"),
-                    dcc.Store(id="dummy-store-start"),
+                    dcc.Store(id="processing-started"),
                     # store matched segments and nodes
                     dcc.Store(id="geojson-store-full", data={}),
                     # store filtered & aggregated matched segments and nodes
@@ -335,7 +338,7 @@ def save_uploaded_file(contents, filename):
     return True
 
 @app.callback(
-    Output("dummy-store-start", "data"),
+    Output("processing-started", "data"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
     State("upload-ready", "data"),
@@ -388,8 +391,8 @@ def start_processing(_, filename, upload_ready):
     processing_thread = threading.Thread(target=worker)
     processing_thread.start()
 
-    # no need to return anything, only used to trigger update_progress
-    return {}
+    # no data returned but store write action will trigger update_progress
+    return True
 
 @app.callback(
     Output("progress", "value"),
@@ -403,7 +406,7 @@ def start_processing(_, filename, upload_ready):
     Output("geojson-store-full", "data"),
     Output("upload-zip", "disabled"),
     Input("progress-poller", "n_intervals"), # initially None
-    Input("dummy-store-start", "data"), # activates progress-poller
+    Input("processing-started", "data"), # will (re)activate the poller
     prevent_initial_call=True
 )
 def update_progress(*_):
