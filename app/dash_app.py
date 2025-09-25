@@ -100,9 +100,9 @@ app.layout = dbc.Container(
                     html.Div(f"App version: {get_app_version()}", style={"fontSize": "12px", "color": "#666"}),
                     # hidden polling interval
                     dcc.Interval(id="progress-poller", interval=2000, disabled=True),
-                    # dummy stores for empty outputs
+                    # stores for some of the callback outputs
+                    dcc.Store(id="upload-ready"),
                     dcc.Store(id="dummy-store-start"),
-                    dcc.Store(id="dummy-store-upload"),
                     # store matched segments and nodes
                     dcc.Store(id="geojson-store-full", data={}),
                     # store filtered & aggregated matched segments and nodes
@@ -313,13 +313,14 @@ app.layout = dbc.Container(
 processing_thread = None
 
 @app.callback(
-    Output("dummy-store-upload", "data"),
+    Output("upload-ready", "data"),
     Input("upload-zip", "contents"),
     State("upload-zip", "filename"),
 )
 def save_uploaded_file(contents, filename):
-    if contents is None:
-        return True   # keep button disabled
+    if not contents or not filename:
+        # no file available yet
+        return False
 
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
@@ -330,19 +331,19 @@ def save_uploaded_file(contents, filename):
     with open(saved_path, "wb") as f:
         f.write(decoded)
 
-    # just needs to return something
-    return {}
+    # signal that the file was fully saved
+    return True
 
 @app.callback(
     Output("dummy-store-start", "data"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
-    State("upload-zip", "contents"),
+    State("upload-ready", "data"),
     prevent_initial_call=True
 )
-def start_processing(_, filename, contents):
-    # guard clause: proceed only if the upload is fully complete
-    if not filename or not contents:
+def start_processing(_, filename, upload_ready):
+    # guard clause: proceed only if the file has been fully saved to disk
+    if not filename or not upload_ready:
         raise PreventUpdate
 
     # initialize progress data
