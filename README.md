@@ -13,7 +13,7 @@ files from an old Garmin device collecting dust, etc.—see matched nodes and se
 ## Demo
 
 The app is deployed on [Render](https://gpx-bike-node-matcher.onrender.com) (heads-up: free-tier hosting makes ZIP processing a bit slow 🐢).  
-For a smoother ride, it’s recommended to run it locally.
+For a smoother ride, it’s recommended to run it locally if the ZIP file contains more than 10-20 tracks.
 
 ## Features
 
