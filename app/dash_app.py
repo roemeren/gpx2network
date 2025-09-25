@@ -309,7 +309,8 @@ app.layout = dbc.Container(
 )
 
 # ---------- Callbacks ----------
-processing_thread = None  # thread reference
+# initialize module-level background processing thread before callback runs
+processing_thread = None
 
 @app.callback(
     Output("dummy-store-upload", "data"),
@@ -323,7 +324,7 @@ def save_uploaded_file(contents, filename):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
     # decode base64 and save to disk
-    content_type, content_string = contents.split(",")
+    _, content_string = contents.split(",")
     decoded = base64.b64decode(content_string)
     saved_path = os.path.join(UPLOAD_FOLDER, filename)
     with open(saved_path, "wb") as f:
@@ -381,6 +382,7 @@ def start_processing(_, filename, contents):
         # disable polling
         progress_state["running"] = False
 
+    # assign to the module-level variable, not a new local variable
     global processing_thread
     processing_thread = threading.Thread(target=worker)
     processing_thread.start()
