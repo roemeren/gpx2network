@@ -11,10 +11,8 @@ buffer_distance = 20  # in meters
 intersect_threshold = 0.75
 # Minimum number of files before we even consider parallel parsing
 PARALLEL_MIN_FILES = 20
-# Minimum CPU cores required for safe parallel parsing.
-# Render’s free tier only provides 2 cores, and parallel processing
-# there tends to fail or get killed due to memory limits.
-PARALLEL_MIN_CORES = 3
+# Minimum number of logical CPU cores required to enable parallel parsing (local only)
+PARALLEL_MIN_CORES = 2
 
 # --- helper function at module level (picklable) ---
 def parse_single_gpx(gpx_file, zip_folder):
@@ -83,11 +81,14 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
 
     # --- parse GPX files ---
     gpx_rows = []
-    num_cores = os.cpu_count() or 1  # fallback to 1 if detection fails
-    # use_parallel = total_files >= PARALLEL_MIN_FILES and num_cores >= PARALLEL_MIN_CORES
-    #debug
-    print(f"NUMBER OF CORES: {num_cores}")
-    use_parallel = False
+    # added as environment variable in Render; used to disable parallel processing
+    # on the free tier to prevent crashes or memory issues
+    IS_RENDER = os.getenv("RENDER") == "true"
+    use_parallel = (
+        not IS_RENDER
+        and os.cpu_count() >= PARALLEL_MIN_CORES
+        and total_files >= PARALLEL_MIN_FILES
+    )
 
     if not use_parallel:
         # Sequential parsing
