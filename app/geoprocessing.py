@@ -2,7 +2,7 @@ from core.common import *
 from shapely.geometry import LineString, MultiLineString
 import shutil
 import zipfile
-import gpxpy
+from lxml import etree
 from concurrent.futures import ProcessPoolExecutor, as_completed
 # import time # for testing optimization: start/stop = time.time() (in s)
 
@@ -19,28 +19,39 @@ PARALLEL_MIN_CORES = 2
 # --- helper function at module level (picklable) ---
 def parse_single_gpx(gpx_file, zip_folder):
     gpx_path = os.path.join(zip_folder, gpx_file)
-    with open(gpx_path, 'r', encoding='utf-8-sig') as fh:
-        gpx = gpxpy.parse(fh)
+    tree = etree.parse(gpx_path)
+    root = tree.getroot()
 
-    start_time = None
-    if gpx.tracks and gpx.tracks[0].segments and gpx.tracks[0].segments[0].points:
-        start_time = gpx.tracks[0].segments[0].points[0].time
-    gpx_date = start_time.date() if start_time else None
-    if gpx_date is None:
-        return None
+    ns = {"gpx": "http://www.topografix.com/GPX/1/1"}  # GPX namespace
 
+    # Extract type (activity type)
+    type_elem = root.find(".//gpx:type", namespaces=ns)
+    activity_type = type_elem.text if type_elem is not None else None
+
+    # Extract start time
+    time_elem = root.find(".//gpx:trk/gpx:trkseg/gpx:trkpt/gpx:time", namespaces=ns)
+    gpx_date = None
+    if time_elem is not None:
+        gpx_date = pd.to_datetime(time_elem.text, utc=True).date()
+
+    # Extract line segments
     line_segments = []
-    for track in gpx.tracks:
-        for seg in track.segments:
-            pts = [(p.longitude, p.latitude) for p in seg.points]
-            if len(pts) > 1:
-                line_segments.append(LineString(pts))
+    for seg in root.findall(".//gpx:trk/gpx:trkseg", namespaces=ns):
+        pts = [(float(p.attrib["lon"]), float(p.attrib["lat"]))
+               for p in seg.findall("gpx:trkpt", namespaces=ns)]
+        if len(pts) > 1:
+            line_segments.append(LineString(pts))
 
-    if not line_segments:
+    if not line_segments or gpx_date is None:
         return None
 
     geom = MultiLineString(line_segments) if len(line_segments) > 1 else line_segments[0]
-    return {"gpx_name": os.path.basename(gpx_file), "gpx_date": gpx_date, "geometry": geom}
+    return {
+        "gpx_name": os.path.basename(gpx_file),
+        "gpx_date": gpx_date,
+        "geometry": geom,
+        "activity_type": activity_type
+    }
 
 # --- main function ---
 def process_gpx_zip(zip_file_path, bike_network, point_geodf):
