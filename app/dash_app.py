@@ -91,7 +91,6 @@ app.layout = dbc.Container(
                             color="success",
                             className="mt-2",
                             external_link=True,
-                            disabled=True,           # initially disabled
                             style={"display": "none"} # initially hidden
                         ),
                         id="download-container"
@@ -337,16 +336,17 @@ def save_uploaded_file(contents, filename):
     Output("dummy-store-start", "data"),
     Input("btn-process", "n_clicks"),
     State("upload-zip", "filename"),
+    State("upload-zip", "contents"),
     prevent_initial_call=True
 )
-def process_zip(_, filename):
-    if not filename:
+def start_processing(_, filename, contents):
+    # guard clause: proceed only if the upload is fully complete
+    if not filename or not contents:
         raise PreventUpdate
 
     # initialize progress data
     progress_state["pct"] = 0
-    progress_state["btn-process-disabled"] = True
-    progress_state["btn-download-disabled"] = True
+    progress_state["btn-disabled"] = True
     progress_state["current-task"] = f"Preparing to process {filename}"
     progress_state["previous-task"] = ""
     progress_state["show-dots"] = True
@@ -376,8 +376,7 @@ def process_zip(_, filename):
             "download_href": os.path.join("static", zip_name)
         }
         progress_state["pct"] = 100
-        progress_state["btn-process-disabled"] = False
-        progress_state["btn-download-disabled"] = False
+        progress_state["btn-disabled"] = False
         progress_state["current-task"] = f"Finished processing {filename}"
         # disable polling
         progress_state["running"] = False
@@ -399,6 +398,7 @@ def process_zip(_, filename):
     Output("btn-download", "href"),
     Output("btn-download", "style"),
     Output("geojson-store-full", "data"),
+    Output("upload-zip", "disabled"),
     Input("progress-poller", "n_intervals"), # initially None
     Input("dummy-store-start", "data"), # activates progress-poller
     prevent_initial_call=True
@@ -415,19 +415,21 @@ def update_progress(*_):
     dots = "." * progress_state["dot-count"] if progress_state.get("show-dots") else ""
 
     current_task = progress_state.get("current-task", "") + dots
-    btn_disabled = progress_state.get("btn-process-disabled", False)
-    btn_download_disabled = progress_state.get("btn-download-disabled", True)
-    # only stop polling when the processing thread has effectively finished
+    btn_disabled = progress_state.get("btn-disabled", False)
+    # disable poller once the background processing thread reports finished
     poller_disabled = not progress_state.get("running", True)
     pct = progress_state.get("pct", 0)
     label = f"{pct}%" if pct >= 5 else ""
     href = progress_state.get("store_data", {}).get("download_href")
-    style = {"display": "block", "width": "40%"} if pct >= 100 else {"display": "none"}
+    style = {"width": "40%", "display": "block" if pct >= 100 else "none"}
 
     # Only update store when ready
     store_data = progress_state.get("store_data") if pct >= 100 else no_update
 
-    return pct, label, poller_disabled, current_task, btn_disabled, btn_download_disabled, href, style, store_data
+    outputs = (pct, label, poller_disabled, current_task,
+           btn_disabled, btn_disabled, href, style, store_data, btn_disabled)
+
+    return outputs
 
 @app.callback(
     Output("kpi-totsegments", "children"),
@@ -792,4 +794,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run()
