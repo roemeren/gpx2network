@@ -495,7 +495,7 @@ def filter_data(store, start_date, end_date):
     # Add tooltip
     agg_seg["tooltip"] = agg_seg.apply(
         lambda row: build_tooltip(
-            "segment ",
+            "Segment ",
             row["ref"],
             {
                 "Visits (GPX)": row["count_gpx"],
@@ -528,7 +528,7 @@ def filter_data(store, start_date, end_date):
     # Add tooltip
     agg_nodes["tooltip"] = agg_nodes.apply(
         lambda row: build_tooltip(
-            "node ",
+            "Node ",
             row["rcn_ref"],
             {
                 "Visits (GPX)": row["count_gpx"],
