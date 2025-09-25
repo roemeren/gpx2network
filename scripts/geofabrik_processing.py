@@ -15,9 +15,6 @@ simplify_tolerance = 10 #  in meters (will drastically decrease memory)
 intersect_threshold = 0.75
 node_width = 3
 input_gpkg = "data/intermediate/rcn_output.gpkg"
-point_geojson = 'data/processed/gdf_point.geojson'
-multiline_geojson_proj = 'data/processed/gdf_multiline_projected.geojson'
-point_geojson_proj = 'data/processed/gdf_point_projected.geojson'
 tqdm_default = {"mininterval": 0.1, "miniters": 1}
 
 def parse_and_filter_tags(tag_string, tags_to_keep=None):
@@ -245,13 +242,7 @@ def process_osm_data(tqdm_params):
     # main outputs
     gdf_multiline.to_file(multiline_geojson, driver='GeoJSON')
     gdf_multiline_projected.to_parquet(multiline_parquet_proj, engine="pyarrow")
-    gdf_point_projected.to_file(point_geojson_proj, driver='GeoJSON')
-    # secondary outputs
-    gdf_multiline.to_parquet(multiline_geojson.replace(".geojson", ".parquet"), engine="pyarrow")
-    gdf_multiline_projected.to_file(multiline_geojson_proj, driver='GeoJSON')
-    gdf_point.to_file(point_geojson, driver='GeoJSON')
-    gdf_point.to_parquet(point_parquet_proj, engine="pyarrow")
-    gdf_point_projected.to_parquet(point_geojson_proj.replace(".geojson", ".parquet"), engine="pyarrow")
+    gdf_point_projected.to_parquet(point_parquet_proj, engine="pyarrow")
     print("[INFO] All outputs saved successfully.")
 
 if __name__ == "__main__":
