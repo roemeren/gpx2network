@@ -4,11 +4,13 @@ import shutil
 import zipfile
 import gpxpy
 from concurrent.futures import ProcessPoolExecutor, as_completed
-import time # for testing optimization: start/stop = time.time() (in s)
+# import time # for testing optimization: start/stop = time.time() (in s)
 
-# geoprocessing parameters
+# --- geoprocessing parameters --- 
 buffer_distance = 20  # in meters
 intersect_threshold = 0.75
+
+# --- concurrency parameters ---
 # Minimum number of files before we even consider parallel parsing
 PARALLEL_MIN_FILES = 20
 # Minimum number of logical CPU cores required to enable parallel parsing (local only)
@@ -84,11 +86,6 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
     # added as environment variable in Render; used to disable parallel processing
     # on the free tier to prevent crashes or memory issues
     IS_RENDER = os.getenv("RENDER") == "true"
-    # temporarily print outcome of check
-    if IS_RENDER:
-        print("App is running on Render")
-    else:
-        print("App is running locally")
     use_parallel = (
         not IS_RENDER
         and os.cpu_count() >= PARALLEL_MIN_CORES
