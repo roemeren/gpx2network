@@ -79,6 +79,11 @@ def process_gpx_zip(zip_file_path, bike_network, point_geodf):
         tuple:
             GeoDataFrame: Matched bike network segments with GPX metadata.
             GeoDataFrame: Matched bike nodes corresponding to the segments.
+
+    Note:
+        An alternative approach that processes GPX files individually with
+        concurrency was tested and performs well locally, but is not suitable
+        on Render free tier due to limited CPU and memory.
     """
 
     # --- unzip ---
