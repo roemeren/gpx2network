@@ -1,5 +1,5 @@
 from core.common import *
-from app.geoprocessing import *
+from app.geoprocessing2 import *
 from app.utils import *
 import json
 import base64
@@ -49,7 +49,7 @@ app.layout = dbc.Container(
     [
         html.Div([
             html.H1(
-                "Belgian Bike Node Network Matcher",
+                "Belgian Bike Node Network Matcher 2",
                 className="text-center my-2 display-4"
             ),
             html.P(
