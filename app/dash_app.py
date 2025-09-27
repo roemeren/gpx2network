@@ -649,10 +649,12 @@ def update_aggregated_tables(filtered_data):
     
     agg_seg = gpd.GeoDataFrame.from_features(filtered_data["segments"]["features"])
     agg_nodes = gpd.GeoDataFrame.from_features(filtered_data["nodes"]["features"])
-    
-    # remove the geometry
-    agg_seg = agg_seg.drop(columns="geometry")
-    agg_nodes = agg_nodes.drop(columns="geometry")
+
+    # remove and rename columns
+    agg_seg = agg_seg.drop(columns=["osm_id_from", "osm_id_to", "tooltip", "geometry"])
+    agg_seg = agg_seg.rename(columns={"ref": "segment"})
+    agg_nodes = agg_nodes.drop(columns=["tooltip", "geometry"])
+    agg_nodes = agg_nodes.rename(columns={"rcn_ref": "node"})
 
     seg_columns = [{"name": c, "id": c} for c in agg_seg.columns]
     seg_data = agg_seg.to_dict("records")
@@ -800,4 +802,4 @@ def highlight_segments_from_nodes(selected_node_rows, node_data, filtered_data):
     )
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
