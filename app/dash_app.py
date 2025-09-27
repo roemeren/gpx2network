@@ -14,7 +14,7 @@ from dash.exceptions import PreventUpdate
 # for debugging (usage: trigger = ctx.triggered_id)
 # from dash import callback_context as ctx  # or dash.ctx
 
-color_match = '#f39c12'
+color_segment = '#f39c12'
 color_network = '#7f8c8d'
 color_processing = '#343a40'
 color_highlight_segment = "red"
@@ -250,16 +250,31 @@ app.layout = dbc.Container(
                                         page_size=25,
                                         row_selectable="multi", # <-- enable row selection
                                         style_table={
-                                            'maxHeight': '400px', # adjust height as needed
+                                            'maxHeight': '400px',
                                             'overflowY': 'auto',
-                                            'overflowX': 'auto'
+                                            'overflowX': 'auto',
+                                            'border': 'thin lightgrey solid'
+                                        },
+                                        style_header={
+                                            'backgroundColor': color_segment,
+                                            'fontWeight': 'bold',
+                                            'color': 'white',
+                                            'textAlign': 'center',
+                                            'fontFamily': 'Aptos, sans-serif',
                                         },
                                         style_cell={
                                             'textAlign': 'left',
                                             'padding': '5px',
                                             'minWidth': '80px',
                                             'width': '150px',
-                                            'maxWidth': '200px'
+                                            'maxWidth': '200px',
+                                            'whiteSpace': 'normal',
+                                            'height': 'auto',
+                                            'fontFamily': 'Aptos, sans-serif',
+                                        },
+                                        style_data={
+                                            'backgroundColor': 'white',
+                                            'color': 'black'
                                         },
                                         fixed_rows={'headers': True},
                                         sort_action='native'
@@ -282,16 +297,31 @@ app.layout = dbc.Container(
                                         page_size=25,
                                         row_selectable="multi", # <-- enable row selection
                                         style_table={
-                                            'maxHeight': '400px',  # same height as segments table
+                                            'maxHeight': '400px',
                                             'overflowY': 'auto',
-                                            'overflowX': 'auto'
+                                            'overflowX': 'auto',
+                                            'border': 'thin lightgrey solid'
+                                        },
+                                        style_header={
+                                            'backgroundColor': '#0074D9',
+                                            'fontWeight': 'bold',
+                                            'color': 'white',
+                                            'textAlign': 'center',
+                                            'fontFamily': 'Aptos, sans-serif',
                                         },
                                         style_cell={
                                             'textAlign': 'left',
                                             'padding': '5px',
                                             'minWidth': '80px',
                                             'width': '150px',
-                                            'maxWidth': '200px'
+                                            'maxWidth': '200px',
+                                            'whiteSpace': 'normal',
+                                            'height': 'auto',
+                                            'fontFamily': 'Aptos, sans-serif',
+                                        },
+                                        style_data={
+                                            'backgroundColor': 'white',
+                                            'color': 'black'
                                         },
                                         fixed_rows={'headers': True},
                                         sort_action='native'
@@ -597,7 +627,7 @@ def update_segments(filtered_data):
     return dl.GeoJSON(
         data=filtered_data["segments"],
         id="geojson-seg",
-        options=dict(style=dict(color=color_match, weight=5))
+        options=dict(style=dict(color=color_segment, weight=5))
     )
 
 @app.callback(
