@@ -10,6 +10,7 @@ from dash import no_update, Dash, html, dcc, Output, Input, State, dash_table
 import dash_bootstrap_components as dbc
 import dash_leaflet as dl
 from dash.exceptions import PreventUpdate
+from dash_extensions.javascript import assign
 
 # for debugging (usage: trigger = ctx.triggered_id)
 # from dash import callback_context as ctx  # or dash.ctx
@@ -36,8 +37,17 @@ bike_network_node = gpd.read_parquet(point_parquet_proj)
 with open(multiline_geojson , "r") as f:
    geojson_network = json.load(f)
 
-# nice ones: ZEPHYR, SANDSTONE
-app = Dash(__name__, external_stylesheets=[dbc.themes.ZEPHYR])
+# Custom function to apply custom symbol to nodes layer (must be js)
+# Source: https://www.dash-leaflet.com/docs/geojson_tutorial (section: Custom icons)
+# Custom icon as per official docs https://leafletjs.com/examples/custom-icons/
+draw_leaf = assign("""
+                   function(feature, latlng){
+                   const icon= L.icon({iconUrl: `https://leafletjs.com/examples/custom-icons/leaf-green.png`, iconSize: [38, 95], iconAnchor: [22, 94]});
+                   return L.marker(latlng, {icon: icon});
+                   }""")
+
+# Assets folder relative to app script where custom js functions are stored
+app = Dash(__name__, external_stylesheets=[dbc.themes.ZEPHYR], assets_folder='../assets')
 server = app.server
 
 # Check memory usage before processing
@@ -634,6 +644,7 @@ def update_segments(filtered_data):
     Output("layer-nodes", "children"),
     Input("geojson-store-filtered", "data"),
     Input("cluster-radius-slider", "value"),
+    prevent_initial_call=True
 )
 def update_nodes(filtered_data, cluster_radius):
     """Render bike nodes
@@ -651,7 +662,8 @@ def update_nodes(filtered_data, cluster_radius):
             data=filtered_data["nodes"],
             cluster=True,
             zoomToBoundsOnClick=True,
-            superClusterOptions={"radius": cluster_radius}
+            superClusterOptions={"radius": cluster_radius},
+            pointToLayer=draw_leaf
         )
 
 @app.callback(

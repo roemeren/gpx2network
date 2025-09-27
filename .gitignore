@@ -6,9 +6,10 @@ data/processed/*
 !data/processed/*.parquet
 !data/processed/DATA_VERSION
 
-# Ignore static files from the app
+# Ignore files from the app
 app/static/
 app/uploads/
+assets/
 
 # Ignore other files and folders
 __pycache__/
